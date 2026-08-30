@@ -92,7 +92,9 @@ action_names = {
 | الملف | الدور |
 |---|---|
 | `baselines_common.py` | دوال مشتركة: `extract_templates`, `setup_sliding_windows`, `build_windows_for_baseline`, `moving_average_predictions`, `enforce_min_duration`, `score_predictions` |
-| `notebook_dtw.py` | الـ DTW كامل |
+| `fastdtw_core.py` | **تنفيذ FastDTW** (Salvador & Chan 2007) — coarsening / projection / refinement |
+| `notebook_fastdtw.py` | **تشغيل FastDTW على الفيديوهات** ← ده اللي تستخدمه |
+| `notebook_dtw.py` | ⚠️ نسخة قديمة، **متعرضش نتيجتها** (شوف تحت) |
 | `notebook_dollar1.py` | الـ $1 Recognizer كامل |
 | `run_all_baselines.py` | runner بيجمع النتايج ويرسم المقارنة |
 | `comparison_results.py` | جدول المقارنة |
@@ -136,24 +138,78 @@ action_names = {
 
 ---
 
+## 6.5 مشكلة الـ rejection في الـ baselines ⚠️ (مهمة جداً)
+
+**المشكلة:** مفيش كلاس `other` **متدرّب** في المشروع ده. الرفض في الـ LSTM بيتم
+بعتبة ثقة (`CONF_REJECT = 0.60`) — لو الموديل مش واثق، الإجابة تبقى `other`.
+(اتجرّب كلاس `other` متدرّب في رن 18/19 وفشل: قال `other` صفر مرة من 77 نافذة.)
+
+**الخطأ اللي كان في `notebook_dtw.py`:** بياخد `min(distances)` على طول، فمستحيل
+يقول `other` خالص. والفيديوهات معظمها سكون — `vidtest3` فيه ~120 ثانية من 126.5
+هي `other`. يعني الـ DTW كانت هتطلع برقم واطي **مش لأنها ضعيفة، لأننا مانعناها
+تجاوب صح**. عرض الرقم ده كمقارنة عادلة = تضليل، والدكتور هيمسكها.
+
+**الحل في `notebook_fastdtw.py`:** عتبة رفض **معايرة من بيانات التدريب**:
+1. ناخد 30 عينة من كل كلاس
+2. نحسب مسافة FastDTW من كل عينة لـ template بتاع كلاسها
+3. العتبة = المئوية 80 من التوزيع ده
+4. أي نافذة في الفيديو مسافتها أكبر من العتبة => `other`
+
+كده الرفض مبني على البيانات مش على رقم مختار بالمزاج، وموازي لمنطق الـ LSTM.
+
+---
+
+## 6.6 نتايج FastDTW — القياسات التقنية
+
+الـ implementation **اتتحقق منه محلياً** قبل التشغيل:
+
+| الاختبار | النتيجة |
+|---|---|
+| نفس السلسلة مع نفسها | مسافة = 0 ✅ |
+| إشارة ممطوطة ×2 مقابل الأصلية | مسافة = 0 ✅ (الـ warp شغال) |
+| مقابل إشارة عشوائية | مسافة = 65.2 ✅ |
+| الفرق عن الـ DTW الكامل عند n=30 | **0.000%** ✅ |
+
+**إثبات الـ O(n) مقابل O(n²) بالأرقام** (34 بعد، radius=1):
+
+| n | خلايا DTW كامل | خلايا FastDTW | النسبة | كسب السرعة |
+|---|---|---|---|---|
+| 30 | 900 | 391 | 0.43 | 1.41x |
+| 60 | 3,600 | 855 | 0.24 | 2.55x |
+| 120 | 14,400 | 1,799 | 0.12 | 6.02x |
+| 240 | 57,600 | 3,703 | 0.06 | 10.94x |
+| 480 | 230,400 | 7,527 | 0.03 | **24.50x** |
+
+**اقرا العمود التاني:** لما `n` تتضاعف، خلايا الـ DTW الكامل بتتربّع (×4)،
+بينما خلايا الـ FastDTW بتتضاعف بس (×2). ده الفرق بين O(n²) و O(n) بالأرقام.
+
+**نقطة مهمة للدكتور:** عند n=30 (اللي إحنا شغالين عليه) الـ FastDTW بيدّي
+**نفس إجابة الـ DTW الكامل بالظبط** (خطأ 0.000%) وأسرع 1.41x. يعني مفيش أي
+تضحية بالدقة مقابل السرعة عند الطول ده.
+
+⬜ **لسه:** الـ accuracy على الفيديوهات — محتاج تشغيل على Kaggle.
+
+---
+
 ## 7. الخطوات الجاية
 
 ```
-☐ 1. شغّل LSTM على vidtest2
-☐ 2. شغّل LSTM على vidtest3   ← الأهم
-☐ 3. شغّل DTW على الـ 3 فيديوهات
+☐ 1. شغّل FastDTW على vidtest1  ← الخطوة الجاية دلوقتي
+☐ 2. شغّل FastDTW على vidtest2 و vidtest3
+☐ 3. شغّل LSTM على vidtest2 و vidtest3
 ☐ 4. شغّل $1 على الـ 3 فيديوهات
 ☐ 5. حط النتايج الحقيقية في run_all_baselines.py وشيل الـ placeholders
 ☐ 6. اعمل الجدول النهائي للدكتور
 ```
 
-**التشغيل على Kaggle:**
+**تشغيل الـ FastDTW على Kaggle:**
 ```python
-exec(open('baselines_common.py').read())
-exec(open('notebook_dtw.py').read())
-exec(open('notebook_dollar1.py').read())
-exec(open('run_all_baselines.py').read())
+# بعد ما تشغّل خلايا الـ notebook الأصلي (عشان X_train_sk و all_keypoints يبقوا متحملين)
+exec(open('notebook_fastdtw.py').read())
 ```
+
+عشان تغيّر الفيديو، عدّل `VIDEO_NAME` في أول `notebook_fastdtw.py`
+(`'vidtest1'` / `'vidtest2'` / `'vidtest3'`). الـ fps بيتظبط لوحده.
 
 ---
 
@@ -167,3 +223,9 @@ exec(open('run_all_baselines.py').read())
 - ✅ اتعمل push للنوتبوك على Kaggle (version 28)
 - ✅ اتعمل push للفولدر كله على GitHub → `gradcs2027/Test1`
 - ✅ اتعمل `HANDOFF.md` (الملف ده)
+- ✅ **اتكتب الـ FastDTW** — `fastdtw_core.py` + `notebook_fastdtw.py`
+  - اتتحقق من صحته محلياً: خطأ 0.000% مقابل الـ DTW الكامل عند n=30
+  - اتقاس الـ speedup: من 1.41x عند n=30 لـ 24.5x عند n=480
+  - اتضافت عتبة رفض معايرة من البيانات (شوف قسم 6.5)
+- 🐛 اتصلّح بج في `notebook_dtw.py`: الـ progress print كان بره اللوب فبيطبع رقم غلط
+- ⚠️ اتحطّ تحذير في `notebook_dtw.py` إن نتيجته مضللة (مفيش rejection)

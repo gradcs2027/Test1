@@ -1,5 +1,16 @@
 """
-DTW (Dynamic Time Warping) Baseline
+DTW (Dynamic Time Warping) Baseline — ⚠️ نسخة قديمة، استخدم notebook_fastdtw.py
+
+⚠️⚠️ تحذير منهجي — متعرضش نتيجة الملف ده للدكتور:
+   الكود ده بياخد min(distances) على طول من غير أي rejection، يعني
+   **مستحيل** يقول 'other'. والفيديوهات معظمها 'other'
+   (vidtest3: ~120 ثانية من 126.5 هي سكون).
+   يعني الرقم اللي هيطلع منه واطي مش لأن الـ DTW ضعيفة، لأننا مانعناها
+   تجاوب صح. لو عرضت الرقم ده كمقارنة عادلة، ده تضليل.
+
+   الملف ده متسيب للمرجعية بس (فيه الـ DTW الكامل O(n²) مشروح خطوة خطوة).
+   للنتايج الحقيقية استخدم: notebook_fastdtw.py — فيه rejection معاير من
+   بيانات التدريب، يوازي الـ CONF_REJECT بتاع الـ LSTM.
 
 التعريف:
   يقارن بين سلسلتين من الأرقام بأطوال مختلفة بـ "warp" ديناميكي.
@@ -106,8 +117,8 @@ for action_name in templates.keys():
         dist = dtw_distance(window, template)
         distances[action_name].append(dist)
 
-    if (i + 1) % max(1, len(windows) // 4) == 0 or i == len(windows) - 1:
-        print(f"   {action_name}: تم {i+1}/{len(windows)}")
+        if (i + 1) % max(1, len(windows) // 4) == 0 or i == len(windows) - 1:
+            print(f"   {action_name}: تم {i+1}/{len(windows)}")
 
 # ==============================================================================
 # ٤. اختيار الإجابة (أقل مسافة)
