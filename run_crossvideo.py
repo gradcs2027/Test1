@@ -56,6 +56,7 @@ from ground_truth import GROUND_TRUTH, VIDEOS, shared_labels, spans
 from oneshot_core import (NUM_FRAMES, balance_templates, cut_templates,
                           normalize_window, norm_distance, resample_linear,
                           to_features)
+from paths import load_keypoints
 
 SCALES = (1.0, 1.5, 2.0, 3.0)   # مقاسات تقسيم الـ templates الطويلة
 STRIDE = 5                      # خطوة النافذة بالفريمات
@@ -66,9 +67,7 @@ SHARED = tuple(shared_labels())  # ('sit_down', 'stand_up', 'wave')
 
 
 def load(video):
-    kp = np.load(f'keypoints/{video}_keypoints.npy')
-    meta = np.load(f'keypoints/{video}_meta.npy', allow_pickle=True).item()
-    return kp, float(meta['effective_fps'])
+    return load_keypoints(video)
 
 
 # ==============================================================================

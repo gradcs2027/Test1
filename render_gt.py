@@ -31,9 +31,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from ground_truth import EXCLUDED, GROUND_TRUTH, STILL, VIDEO_INFO
 
-VIDEO_DIR = Path(__file__).resolve().parent.parent / 'testvid_upload'
-KP_DIR = Path(__file__).resolve().parent / 'keypoints'
-OUT_DIR = Path(__file__).resolve().parent / 'results'
+from paths import KP_DIR, OUT_DIR, VIDEO_DIR  # noqa: F401
 FRAME_SKIP = 2                      # نفس اللي في pose_extract.py
 CRF = 23                            # 18=أنقى/أكبر، 28=أصغر/أوحش
 

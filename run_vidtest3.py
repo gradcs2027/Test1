@@ -37,6 +37,7 @@ from oneshot_core import (build_multiscale_windows, cut_templates,
                           distance_cache, majority_smooth, norm_distance,
                           window_edges)
 from ground_truth import GROUND_TRUTH, REPEATED as _REP
+from paths import CACHE_DIR, load_keypoints
 
 GT = GROUND_TRUTH['vidtest3']
 REPEATED = _REP['vidtest3']
@@ -51,9 +52,7 @@ TMPL_MAX, TMPL_MIN, TMPL_FRAC = 2.5, 1.0, 0.5
 
 
 def load():
-    kp = np.load('keypoints/vidtest3_keypoints.npy')
-    meta = np.load('keypoints/vidtest3_meta.npy', allow_pickle=True).item()
-    return kp, float(meta['effective_fps'])
+    return load_keypoints('vidtest3')
 
 
 def template_spans():
@@ -165,9 +164,8 @@ def run(mode='vel', shape_norm=True, smooth=SMOOTH_K, hubness=True,
                                         mode=mode, shape_norm=shape_norm)
 
     key = f'v3_{mode}_{int(shape_norm)}_s{STRIDE}_r{RADIUS}'
-    cache = Path('_scratch/dtw_cache')
-    cache.mkdir(parents=True, exist_ok=True)
-    cf = cache / f'{key}.npy'
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cf = CACHE_DIR / f'{key}.npy'
 
     if cf.exists():
         D = np.load(cf)

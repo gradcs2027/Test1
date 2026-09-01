@@ -33,6 +33,7 @@ from oneshot_core import (balance_templates, build_multiscale_windows,
                           classify, cut_templates, distance_cache,
                           drop_short_segments, event_metrics, frame_metrics,
                           majority_smooth, window_edges)
+from paths import CACHE_DIR, load_keypoints
 
 # ==============================================================================
 # الإعدادات
@@ -84,9 +85,7 @@ TEMPLATE_CLIPS = {
 
 
 def load(name):
-    kp = np.load(f'keypoints/{name}_keypoints.npy')
-    meta = np.load(f'keypoints/{name}_meta.npy', allow_pickle=True).item()
-    return kp, float(meta['effective_fps'])
+    return load_keypoints(name)
 
 
 # ==============================================================================
@@ -211,9 +210,8 @@ def prepare(name, template_source_videos, mode='vel', shape_norm=True,
     key = (f'{name}_{"-".join(template_source_videos)}_{mode}_'
            f'{int(shape_norm)}_{"x".join(map(str, scales))}_'
            f's{STRIDE}_r{RADIUS}_m{MAX_PER_LABEL}')
-    cache_dir = Path('_scratch/dtw_cache')
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f'{key}.npy'
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f'{key}.npy'
 
     if cache_file.exists():
         D = np.load(cache_file)

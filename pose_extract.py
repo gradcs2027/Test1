@@ -16,8 +16,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-VIDEO_DIR = Path(__file__).resolve().parent.parent / 'testvid_upload'
-OUT_DIR = Path(__file__).resolve().parent / 'keypoints'
+# ⚠️ الكتابة بتروح KP_OUT مش KP_DIR. على Kaggle الداتاسِت للقراءة بس،
+#    فـ KP_OUT بيروح /kaggle/working. محلياً الاتنين نفس الفولدر.
+from paths import KP_OUT as OUT_DIR, VIDEO_DIR
+
 FRAME_SKIP = 2          # نفس اللي في cell7_video.py -> fps فعلي = fps/2
 
 
@@ -94,8 +96,8 @@ def extract(video_name, model):
 def main():
     from ultralytics import YOLO
 
-    videos = sys.argv[1:] or ['vidtest1', 'vidtest2', 'vidtest3']
-    OUT_DIR.mkdir(exist_ok=True)
+    videos = sys.argv[1:] or ['vidtest1', 'vidtest2', 'vidtest3', 'vidtest4']
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print('📥 تحميل YOLOv8n-pose...')
     model = YOLO('yolov8n-pose.pt')
@@ -104,7 +106,7 @@ def main():
         kp, meta = extract(name, model)
         np.save(OUT_DIR / f'{name}_keypoints.npy', kp)
         np.save(OUT_DIR / f'{name}_meta.npy', meta, allow_pickle=True)
-        print(f'💾 اتحفظ: keypoints/{name}_keypoints.npy  {kp.shape}')
+        print(f'💾 اتحفظ: {OUT_DIR / f"{name}_keypoints.npy"}  {kp.shape}')
 
     print('\n✅ خلص')
 
