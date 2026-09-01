@@ -1,10 +1,14 @@
 """
-Few-Shot FastDTW على vidtest2 — 4 حركات
+Few-Shot FastDTW على vidtest2
 
     python run_vidtest2.py
 
-المهمة: الفيديو فيه 4 حركات. بناخد **قصاصة قصيرة واحدة** من كل حركة كـ template،
+المهمة: بناخد **قصاصة قصيرة واحدة** من كل حركة في الفيديو كـ template،
 وبنصنّف باقي الفيديو بأقرب template بمسافة FastDTW.
+
+عدد الحركات بييجي من `ground_truth.py` مش مكتوب هنا بالإيد — لما الجدول
+اتصحّح وبقى `sit_down` و `stand_up` منفصلين بدل حركة واحدة، عدد الكلاسات
+اتغيّر لوحده والصدفة معاه.
 
 ⚠️ المنهجية — تلات نقاط:
   ١. مافيش أي معامل بيتظبط — أقرب template وخلاص
@@ -133,11 +137,12 @@ def run(mode='vel', shape_norm=True, smooth=SMOOTH_K, hubness=True,
 
 
 def main():
+    clips = template_spans()
+
     print('=' * 72)
-    print('  Few-Shot FastDTW — vidtest2، 4 حركات')
+    print(f'  Few-Shot FastDTW — vidtest2، {len(clips)} حركات')
     print('=' * 72)
 
-    clips = template_spans()
     print(f'\n📚 الـ templates ({len(clips)} حركة):')
     for s, e, lab in clips:
         print(f'    {lab:<20} [{s:5.1f} - {e:5.1f}]  ({e - s:.1f}s)')

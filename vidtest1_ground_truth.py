@@ -3,8 +3,8 @@ Ground Truth لـ vidtest1.mp4 — الملف المرجعي
 
 ⚠️ الملف ده اتعمل 2026-08-31 عشان يبقى فيه **مصدر حقيقة واحد**.
    قبل كده نفس الجدول كان منسوخ حرفياً في **5 ملفات**:
-     cell10_timeline.py · notebook_dtw.py · notebook_dollar1.py
-     notebook_fastdtw.py · run_oneshot.py
+     cell10_timeline.py · notebook_dollar1.py · notebook_fastdtw.py
+     run_oneshot.py · (وملف DTW قديم اتشال)
    خمس نسخ يعني خمس فرص إن واحدة تتعدّل والباقي لأ. ودي بالظبط الغلطة
    اللي وقعنا فيها مع vidtest3 (شوف HANDOFF قسم 6.8).
 
