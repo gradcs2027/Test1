@@ -1,4 +1,5 @@
-!pip install ultralytics -q
+import subprocess
+subprocess.run(['pip', 'install', 'ultralytics', '-q'])
 
 from ultralytics import YOLO
 import cv2
@@ -24,7 +25,7 @@ yolo_pose = YOLO('yolov8n-pose.pt')
 # ⚠️ الأوصاف دي اتصلّحت بعد ما اتفرجنا على contact sheets فعلاً. الوصف
 # القديم كان بيقول vidtest1 "لقطة قريبة مش صالحة" و vidtest2 "فيشآي
 # هندهيلد" — الاتنين غلط، والغلط ده كان بيبرّر نتايج ضعيفة بسبب خطأ.
-VIDEO_PATH = "/kaggle/input/datasets/abdallahhsamir/testvid/vidtest1.mp4"
+VIDEO_PATH = "/kaggle/input/datasets/absoo2810/vidtest1/document_5805352756784930341.mp4"
 
 cap = cv2.VideoCapture(VIDEO_PATH)
 cap.set(cv2.CAP_PROP_POS_FRAMES, 300)  # فريم من حوالي ثانية 5 (الأول فيه إيد على العدسة)
