@@ -196,25 +196,12 @@ predictions = moving_average_predictions(predictions, k=SMOOTH_K)
 # ٦. المقارنة مع الـ ground truth
 # ==============================================================================
 
-GROUND_TRUTHS = {
-    'vidtest1': [
-        (0.3,   4.4, 'rub_hands'), (4.4,   4.8, '?'),
-        (4.8,  11.4, 'wave'),      (11.4, 12.2, 'other*'),
-        (12.2, 14.3, 'sit_down'),  (14.3, 19.5, 'other*'),
-        (19.5, 20.4, 'stand_up'),  (20.4, 21.2, 'other*'),
-        (21.2, 27.1, '?'),         (27.1, 28.4, 'other*'),
-        (28.4, 29.7, 'sit_down'),  (29.7, 32.4, 'other*'),
-        (32.4, 33.4, 'stand_up'),  (33.4, 33.7, '?'),
-        (33.7, 37.4, 'wave'),
-    ],
-}
+# ⚠️ الجدول كان مكتوب هنا بإيد، ونسخ منه في 4 ملفات تانية. اتشال
+#    2026-08-31 وبقى بييجي من مصدر واحد. السبب: نسخة vidtest3 كانت
+#    غلط تماماً وعاشت شهر من غير ما حد ياخد باله. HANDOFF قسم 6.8
+from ground_truth import GROUND_TRUTH
 
-if VIDEO_NAME == 'vidtest2':
-    from vidtest2_ground_truth import ground_truth_segments_vidtest2 as gt
-elif VIDEO_NAME == 'vidtest3':
-    from vidtest3_ground_truth import ground_truth_segments_vidtest3 as gt
-else:
-    gt = GROUND_TRUTHS['vidtest1']
+gt = GROUND_TRUTH[VIDEO_NAME]
 
 print_results(f"FastDTW Baseline — {VIDEO_NAME}", predictions, edges_sk, gt,
               baseline_only=True)

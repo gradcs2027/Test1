@@ -279,23 +279,12 @@ predictions = moving_average_predictions(predictions, k=5)
 
 print("\n📊 المقارنة مع الـ ground truth...")
 
-ground_truth_segments = [
-    (0.3,   4.4, 'rub_hands'),
-    (4.4,   4.8, '?'),
-    (4.8,  11.4, 'wave'),
-    (11.4, 12.2, 'other*'),
-    (12.2, 14.3, 'sit_down'),
-    (14.3, 19.5, 'other*'),
-    (19.5, 20.4, 'stand_up'),
-    (20.4, 21.2, 'other*'),
-    (21.2, 27.1, '?'),
-    (27.1, 28.4, 'other*'),
-    (28.4, 29.7, 'sit_down'),
-    (29.7, 32.4, 'other*'),
-    (32.4, 33.4, 'stand_up'),
-    (33.4, 33.7, '?'),
-    (33.7, 37.4, 'wave'),
-]
+# ⚠️ الجدول ده كان مكتوب هنا بإيد — واحدة من 5 نسخ متطابقة في المشروع.
+#    اتشال 2026-08-31 وبقى بييجي من مصدر واحد. السبب: نسخة vidtest3
+#    عاشت شهر وهي غلط تماماً من غير ما حد ياخد باله. HANDOFF قسم 6.8
+from ground_truth import GROUND_TRUTH
+
+ground_truth_segments = GROUND_TRUTH['vidtest1']
 
 print_results("$1 Recognizer Baseline", predictions, edges_sk, ground_truth_segments)
 

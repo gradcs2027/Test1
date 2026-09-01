@@ -138,31 +138,42 @@ def enforce_min_duration(labels, min_len, protect=None):
 
 def moving_average_predictions(predictions, k=5):
     """
-    تنعيم الإجابات باستخدام متوسط متحرك.
-    predictions: list من الأكشن (strings)
-    k: عدد النوافذ المستخدمة (خمسة = نافذتين قبل وبعد + الحالية)
+    تنعيم الإجابات بتصويت الأغلبية.
+
+    🐛 النسخة القديمة كانت مكسورة — كانت بتاخد **متوسط حسابي لأرقام
+       الفئات**. أسماء الحركات فئات مش أرقام، فالمتوسط بينها ملوش معنى.
+
+       مثال حقيقي بيوضّح الكارثة (k=5):
+         الدخل    ['other','other','stand_up','other','other']
+         الفئات مرتّبة أبجدياً: other=0, rub_hands=1, stand_up=2 ...
+         الأرقام  [0, 0, 2, 0, 0]  ->  متوسط متحرك  ->  [~0.4 ... ] وبعد
+         التقريب بتطلع أرقام لفئات **ماحدش توقّعها أصلاً**.
+
+       يعني الدالة كانت بتمسح الكشف الحقيقي **وتخترع لابل تالت مكانه**.
+       ده كان بيخلّي الـ baselines تبان أوحش من الحقيقة — يعني كان بيحابي
+       الـ LSTM في المقارنة، وده بالظبط اللي إحنا عايزين نتجنّبه.
+
+    ✅ مسار الـ LSTM **مش متأثر**: `cell9_smoothing.py:smooth_probs` بينعّم
+       **الاحتمالات** لكل كلاس على حدة وبعدين بياخد argmax — وده الصح
+       رياضياً. البج كان في الـ baselines بس.
+
+    التصويت بالأغلبية هو البديل الصح للفئات: كل نافذة بتاخد اللابل الأكتر
+    تكراراً في جيرانها، ومستحيل يطلع لابل مش موجود في الدخل.
     """
     if k <= 1:
-        return predictions
+        return list(predictions)
 
-    # Convert to indices for averaging
-    unique_actions = sorted(set(predictions))
-    action_to_idx = {a: i for i, a in enumerate(unique_actions)}
-    idx_to_action = {i: a for a, i in action_to_idx.items()}
-
-    indices = np.array([action_to_idx[p] for p in predictions])
-
-    # Moving average on indices
     pad = k // 2
-    padded = np.pad(indices, pad, mode='edge')
-    kernel = np.ones(k) / k
-
-    smoothed_indices = np.array([
-        np.round(np.convolve(padded, kernel, mode='valid'))[i]
-        for i in range(len(indices))
-    ], dtype=int)
-
-    return [idx_to_action[int(i)] for i in smoothed_indices]
+    out = []
+    for i in range(len(predictions)):
+        lo, hi = max(0, i - pad), min(len(predictions), i + pad + 1)
+        vals, counts = np.unique(predictions[lo:hi], return_counts=True)
+        top = counts.max()
+        winners = set(vals[counts == top])
+        # عند التعادل نفضّل اللابل الحالي — ما نمسحش كشف حقيقي من غير سبب
+        out.append(predictions[i] if predictions[i] in winners
+                   else str(vals[counts.argmax()]))
+    return out
 
 
 # ==============================================================================
