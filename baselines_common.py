@@ -252,3 +252,43 @@ def print_results(name, predicted_actions, edges_sk, ground_truth_segments, base
 
     if baseline_only:
         print(f"\n✅ النتيجة النهائية: {cur['hit']/cur['total']*100:.1f}% (مقابل LSTM: 71.8%)")
+
+
+
+# ==============================================================================
+# Rejection Threshold Sweep — بندوّر على "عتبة معرفش" الأنسب
+# ==============================================================================
+
+def sweep_rejection_threshold(best_distances, best_actions, edges_sk, ground_truth_segments,
+                               thresholds=None):
+    """
+    بتجرب عدة عتبات مسافة، ولكل واحدة تستبدل أي نافذة مسافتها أكبر من
+    العتبة بـ 'other'، وتقيس النتيجة مقابل الـ ground truth.
+    """
+    best_distances = np.asarray(best_distances, dtype=float)
+    finite = best_distances[np.isfinite(best_distances)]
+
+    if thresholds is None:
+        lo, hi = np.percentile(finite, [5, 95]) if len(finite) else (0, 1)
+        thresholds = np.linspace(lo, hi, 15)
+
+    rows = []
+    for th in thresholds:
+        labels = [a if d <= th else 'other' for a, d in zip(best_actions, best_distances)]
+        s = score_predictions(labels, edges_sk, ground_truth_segments)
+        rows.append({
+            'threshold': th,
+            'overall': s['hit'] / max(1, s['total']) * 100,
+            'other_recall': s['other_hit'] / max(1, s['other_total']) * 100,
+            'real_recall': s['real_hit'] / max(1, s['real_total']) * 100,
+            'other_pct': labels.count('other') / len(labels) * 100,
+        })
+    return rows
+
+
+def print_threshold_sweep(rows, baseline_acc):
+    print(f"\n🎚️ العتبة مقابل الـ ground truth (خط الأساس {baseline_acc:.1f}%):")
+    print(f"   {'عتبة':>8} {'إجمالي':>8} {'other':>8} {'real':>8}  {'other%':>7}")
+    for r in rows:
+        print(f"   {r['threshold']:8.2f} {r['overall']:7.1f}% "
+              f"{r['other_recall']:7.1f}% {r['real_recall']:7.1f}% {r['other_pct']:6.0f}%")
