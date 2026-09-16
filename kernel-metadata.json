@@ -12,7 +12,8 @@
   "keywords": [],
   "dataset_sources": [
     "abdallahhsamir/testvid",
-    "jizeyong/hmdb51"
+    "jizeyong/hmdb51",
+    "jonathannield/cctv-action-recognition-dataset"
   ],
   "kernel_sources": [],
   "competition_sources": [],

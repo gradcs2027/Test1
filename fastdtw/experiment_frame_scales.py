@@ -100,6 +100,47 @@ def classify_with_confidence(window_feat, templates, radius=RADIUS):
     return best_label, best_d, confidence
 
 
+def calibrate_templates(templates, radius=RADIUS):
+    """
+    لكل template بنحسب "معدل بعده الطبيعي" عن باقي الـ29 template التانية
+    (leave-one-out بين الـ templates الخارجية نفسها — مفيش أي تسريب من
+    vidtest). نفس فكرة تطبيع TIER2 القديمة: بعض القصاصات (زي تسريح شعر
+    مصوّر قريب) مسافتها عن أي حاجة بتبقى كبيرة/صغيرة بشكل عام مش لأنها
+    قريبة فعلاً من الحركة الصح، فبنطبّعها بمتوسطها وانحرافها الخاص قبل
+    ما نقارن.
+    """
+    n = len(templates)
+    D = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = norm_distance(templates[i]['feat'], templates[j]['feat'], radius=radius)
+            D[i, j] = D[j, i] = d
+
+    mu = np.zeros(n)
+    sigma = np.ones(n)
+    for j in range(n):
+        others = np.delete(D[:, j], j)
+        mu[j] = others.mean()
+        sigma[j] = others.std() + 1e-6
+    return mu, sigma
+
+
+def classify_with_confidence_z(window_feat, templates, mu, sigma, radius=RADIUS):
+    """زي classify_with_confidence بس بيقارن بالمسافة المطبّعة (Z) مش الخام."""
+    per_label_best = {}
+    for idx, t in enumerate(templates):
+        d = norm_distance(window_feat, t['feat'], radius=radius)
+        z = (d - mu[idx]) / sigma[idx]
+        if t['label'] not in per_label_best or z < per_label_best[t['label']]:
+            per_label_best[t['label']] = z
+
+    ranked = sorted(per_label_best.items(), key=lambda kv: kv[1])
+    best_label, best_z = ranked[0]
+    # الفرق مباشرة (مش نسبة) لأن Z ممكن يبقى بالسالب
+    confidence = ranked[1][1] - best_z if len(ranked) > 1 else 1.0
+    return best_label, best_z, confidence
+
+
 def run_config(n_frames, ext_templates, labels_needed):
     templates = build_templates(ext_templates, n_frames)
     windows = build_test_windows(labels_needed, n_frames)
@@ -111,7 +152,19 @@ def run_config(n_frames, ext_templates, labels_needed):
     return results
 
 
-def summarize(n_frames, results):
+def run_config_z(n_frames, ext_templates, labels_needed):
+    templates = build_templates(ext_templates, n_frames)
+    mu, sigma = calibrate_templates(templates)
+    windows = build_test_windows(labels_needed, n_frames)
+
+    results = []
+    for w in windows:
+        pred, dist, conf = classify_with_confidence_z(w['feat'], templates, mu, sigma)
+        results.append({**w, 'pred': pred, 'dist': dist, 'confidence': conf})
+    return results
+
+
+def summarize(n_frames, results, title='📐'):
     n = len(results)
     correct = sum(1 for r in results if r['pred'] == r['true'])
     acc = correct / n * 100 if n else 0.0
@@ -122,7 +175,7 @@ def summarize(n_frames, results):
     avg_conf_wrong = float(np.mean([r['confidence'] for r in wrong])) if wrong else 0.0
 
     print(f'\n{"=" * 70}')
-    print(f'  📐 {n_frames} فريم')
+    print(f'  {title} {n_frames} فريم')
     print(f'{"=" * 70}')
     print(f'  الدقة: {correct}/{n} = {acc:.1f}%')
     print(f'  متوسط الثقة (كل النوافذ): {avg_conf:.3f}')
@@ -154,7 +207,7 @@ def main():
         summaries.append(summarize(n_frames, results))
 
     print(f'\n{"=" * 70}')
-    print('  📊 المقارنة النهائية')
+    print('  📊 المقارنة النهائية (بدون تطبيع)')
     print(f'{"=" * 70}')
     print(f'  {"فريمات":<10}{"دقة%":<10}{"ثقة عامة":<12}{"ثقة (صح)":<12}{"ثقة (غلط)":<12}')
     for s in summaries:
@@ -162,8 +215,27 @@ def main():
               f'{s["avg_confidence"]:<12.3f}{s["avg_confidence_correct"]:<12.3f}'
               f'{s["avg_confidence_wrong"]:<12.3f}')
 
+    # ── نفس الشيء بس بتطبيع Z (كل template يتقاس بمعدل بعده الطبيعي عن
+    # باقي الـ templates الخارجية) — تجربة TIER2-style لمحاولة رفع الدقة.
+    print(f'\n{"=" * 70}')
+    print('  🧪 نفس التجربة بس بتطبيع Z (z-normalization) على كل template')
+    print(f'{"=" * 70}')
+    summaries_z = []
+    for n_frames in FRAME_CONFIGS:
+        results_z = run_config_z(n_frames, ext_templates, labels_needed)
+        summaries_z.append(summarize(n_frames, results_z, title='🧪 (مطبّع)'))
+
+    print(f'\n{"=" * 70}')
+    print('  📊 المقارنة النهائية: بدون تطبيع مقابل بتطبيع Z')
+    print(f'{"=" * 70}')
+    print(f'  {"فريمات":<10}{"دقة% (خام)":<14}{"دقة% (مطبّع)":<14}')
+    for s, sz in zip(summaries, summaries_z):
+        print(f'  {s["n_frames"]:<10}{s["accuracy"]:<14.1f}{sz["accuracy"]:<14.1f}')
+
     np.save(OUT_DIR / 'frame_scale_summary.npy', summaries, allow_pickle=True)
+    np.save(OUT_DIR / 'frame_scale_summary_zscore.npy', summaries_z, allow_pickle=True)
     print(f'\n✅ النتيجة اتحفظت في {OUT_DIR / "frame_scale_summary.npy"}')
+    print(f'✅ نتيجة التطبيع اتحفظت في {OUT_DIR / "frame_scale_summary_zscore.npy"}')
 
 
 if __name__ == '__main__':
