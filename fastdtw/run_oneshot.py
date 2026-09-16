@@ -13,9 +13,14 @@ Few-Shot FastDTW — التجربة الكاملة (من غير أي داتاس�
      الفيديوهات التانية. يعني vidtest3 مشافش ولا template ولا عتبة
      جايين منه.
 
-  ٣. كل رقم بيتقارن بخط الأساس الغبي "قول 'other' على طول". في vidtest3
-     الخط ده لوحده 95.7% لأن 96% من الفيديو سكون. أي رقم دقة إجمالي من
-     غير الخط ده جنبه هو رقم مضلّل.
+  ٣. كل رقم بيتقارن بخط الأساس الغبي "قول 'other' على طول". أي رقم دقة
+     إجمالي من غير الخط ده جنبه هو رقم مضلّل.
+
+     ⚠️ الخط ده **بيتغيّر مع الفيديو** وممكن يبقى صفر. الـ ground truth
+        المصحّح بتاع vidtest3 مافيهوش ولا ثانية `other*` — الـ 56 ثانية
+        اللي كانت متحسوبة "سكون" بقت `'?'` (مش موصوفة، بتتستثنى). يعني
+        خط الأساس على vidtest3 = **0.0%**، مش 95.7% زي ما كان مكتوب هنا
+        قبل ما الـ GT يتصحّح. شوف HANDOFF قسم 6.8.
 """
 
 import argparse
@@ -29,10 +34,13 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-from oneshot_core import (balance_templates, build_multiscale_windows,
-                          classify, cut_templates, distance_cache,
+from classifier import (balance_templates, build_multiscale_windows,
+                          cached_distances, classify, cut_templates,
                           drop_short_segments, event_metrics, frame_metrics,
                           majority_smooth, window_edges)
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from paths import CACHE_DIR, load_keypoints
 
 # ==============================================================================
@@ -113,7 +121,9 @@ def calib_score(labels, edges, gt):
        في اتجاهين متعاكسين، وإحنا وقعنا في التانية فعلاً:
 
        • الدقة الإجمالية: "قول other على طول" -> 95.7% على vidtest3
-         من غير ما تمسك ولا حركة.
+         من غير ما تمسك ولا حركة. (الرقم ده كان بالـ GT القديم الغلط؛
+         بالـ GT المصحّح بقى 0.0% لأن مافيش `other*` فيه أصلاً. الحجّة
+         نفسها لسه صحيحة — شوف vidtest1: خط الأساس فيه 29%.)
 
        • F1 الحدث لوحده: الإنذار الكاذب بيتحسب **قطعة** مش بمدته. يعني
          إنذار طوله 8 ثواني تكلفته زي إنذار طوله نص ثانية. فالبحث اكتشف
@@ -206,26 +216,22 @@ def prepare(name, template_source_videos, mode='vel', shape_norm=True,
                                              mode=mode, shape_norm=shape_norm)
 
     # تخزين المسافات على القرص — حسابها بياخد دقايق، والمعايرة بتتكرر كتير.
-    # المفتاح فيه كل حاجة بتغيّر النتيجة، فأي تعديل في الإعدادات بيبطّل الكاش.
+    #
+    # ⚠️ المفتاح ده كان مكتوب جنبه "فيه كل حاجة بتغيّر النتيجة" — وده كان
+    #    **غلط**. مكانش فيه أي حاجة عن الـ templates نفسها، وهي بتيجي من
+    #    `ground_truth.py`. `cached_distances` بتزوّد بصمة القصاصات
+    #    وبتتحقق من شكل المصفوفة. شوف oneshot_core.cached_distances.
     key = (f'{name}_{"-".join(template_source_videos)}_{mode}_'
            f'{int(shape_norm)}_{"x".join(map(str, scales))}_'
            f's{STRIDE}_r{RADIUS}_m{MAX_PER_LABEL}')
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_file = CACHE_DIR / f'{key}.npy'
-
-    if cache_file.exists():
-        D = np.load(cache_file)
-        if verbose:
-            print(f'  {name}: {D.size:,} مسافة من الكاش')
-    else:
-        t0 = time.perf_counter()
-        D = distance_cache(feats, templates, scales, radius=RADIUS)
-        el = time.perf_counter() - t0
-        np.save(cache_file, D)
-        if verbose:
-            print(f'  {name}: {len(centers)} نافذة × {len(scales)} مقاس × '
-                  f'{len(templates)} template = {D.size:,} مقارنة DTW '
-                  f'في {el:.0f}s ({el / D.size * 1000:.2f}ms للواحدة)')
+    t0 = time.perf_counter()
+    D = cached_distances(CACHE_DIR / f'{key}.npy', feats, templates, scales,
+                         radius=RADIUS)
+    el = time.perf_counter() - t0
+    if verbose:
+        print(f'  {name}: {len(centers)} نافذة × {len(scales)} مقاس × '
+              f'{len(templates)} template = {D.size:,} مقارنة DTW '
+              f'في {el:.0f}s')
 
     # ⚠️ GT خاصة بالمعايرة: الأحداث اللي مفيش لها template أصلاً بتتعلّم '?'
     #    (يعني تتستثنى). في fold الأول مثلاً، vidtest1 بياخد templates من

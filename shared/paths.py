@@ -34,7 +34,8 @@ from pathlib import Path
 
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent      # shared/
+ROOT = HERE.parent                          # kaggle_nb_520b8d324a/
 
 # ==============================================================================
 # اكتشاف البيئة
@@ -82,21 +83,43 @@ KP_DIR = _first_dir(
     Path('/kaggle/working/keypoints') if ON_KAGGLE else HERE / 'keypoints',
 )
 
-# الفيديوهات محتاجينها للاستخراج والرسم بس، مش للتصنيف
+# الفيديوهات محتاجينها للاستخراج والرسم بس، مش للتصنيف.
+# بندوّر لفوق من فولدر المشروع عشان الملفات ممكن تكون جنبه أو فوقه بمستوى.
 VIDEO_DIR = _first_dir(
-    HERE.parent / 'testvid_upload',
+    ROOT / 'testvid_upload',
+    ROOT.parent / 'testvid_upload',
     _DATASET,
-    HERE.parent / 'testvid_upload',
+    ROOT.parent / 'testvid_upload',
 )
 
 if ON_KAGGLE:
     KP_OUT = Path('/kaggle/working/keypoints')     # الكتابة لازم تروح working
-    OUT_DIR = Path('/kaggle/working/results')
     CACHE_DIR = Path('/kaggle/working/_scratch/dtw_cache')
 else:
     KP_OUT = HERE / 'keypoints'                    # محلياً القراءة والكتابة واحد
-    OUT_DIR = HERE / 'results'
-    CACHE_DIR = HERE / '_scratch' / 'dtw_cache'
+    CACHE_DIR = ROOT / '_scratch' / 'dtw_cache'
+
+
+def out_dir(caller_file):
+    """
+    فولدر `results/` بتاع الطريقة اللي السكريبت ده جوّاها.
+
+        OUT_DIR = out_dir(__file__)
+
+    ⚠️ مش ثابت واحد عمداً. كل طريقة (lstm / fastdtw / dollar1) ليها نتايجها
+       في فولدرها، عشان محدش يبص على `results/` ويلاقي فيها حاجات من تلات
+       طرق مخلوطة ومايعرفش مين طلّع إيه.
+
+    بيرجّع الفولدر بعد ما يعمله لو مش موجود.
+    """
+    d = Path(caller_file).resolve().parent / 'results'
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        # الفولدر للقراءة بس (مثلاً شغّالين من /kaggle/input)
+        d = Path('/kaggle/working/results') if ON_KAGGLE else d
+        d.mkdir(parents=True, exist_ok=True)
+    return d
 
 # متغيّر بيئة بيكسر أي حاجة فوق — للتجارب
 KP_DIR = Path(os.environ.get('KEYPOINTS_DIR', KP_DIR))
@@ -160,8 +183,12 @@ if __name__ == '__main__':
     print(f'KP_DIR    : {KP_DIR}   {ok(KP_DIR)}')
     print(f'VIDEO_DIR : {VIDEO_DIR}   {ok(VIDEO_DIR)}')
     print(f'KP_OUT    : {KP_OUT}')
-    print(f'OUT_DIR   : {OUT_DIR}')
     print(f'CACHE_DIR : {CACHE_DIR}')
+    print(f'\nكل طريقة بتكتب في results/ بتاعها — out_dir(__file__):')
+    for m in ('shared', 'lstm', 'fastdtw', 'dollar1'):
+        d = ROOT / m / 'results'
+        n = len(list(d.iterdir())) if d.is_dir() else 0
+        print(f'  {m:<10} {d}   ({n} ملف)')
 
     # مهم يبان إذا الـ keypoints جاية من الريبو ولا من الداتاسِت — لو حد
     # فكّر إنه بيقرا من الداتاسِت وهو بيقرا من الريبو هيتلخبط في تفسير النتايج

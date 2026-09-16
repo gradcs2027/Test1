@@ -28,6 +28,11 @@
 
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+# الجداول الخام لكل فيديو في `gt_sources/` — ملف لكل فيديو عشان التعديل
+# يبان في diff واضح. الملف ده بيلمّهم ويعرضهم كمصدر واحد.
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'gt_sources'))
 
 from vidtest1_ground_truth import (REPEATED as REPEATED1,
                                    ground_truth_vidtest1, video_info as INFO1)
@@ -35,6 +40,8 @@ from vidtest2_ground_truth import (REPEATED as REPEATED2,
                                    ground_truth_vidtest2, video_info as INFO2)
 from vidtest3_ground_truth_v2 import (REPEATED as REPEATED3,
                                       ground_truth_vidtest3, video_info as INFO3)
+from vidtest4_ground_truth import (REPEATED as REPEATED4,
+                                   ground_truth_vidtest4, video_info as INFO4)
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -46,10 +53,11 @@ GROUND_TRUTH = {
     'vidtest1': ground_truth_vidtest1,
     'vidtest2': ground_truth_vidtest2,
     'vidtest3': ground_truth_vidtest3,
+    'vidtest4': ground_truth_vidtest4,
 }
 
-VIDEO_INFO = {'vidtest1': INFO1, 'vidtest2': INFO2, 'vidtest3': INFO3}
-REPEATED = {'vidtest1': REPEATED1, 'vidtest2': REPEATED2, 'vidtest3': REPEATED3}
+VIDEO_INFO = {'vidtest1': INFO1, 'vidtest2': INFO2, 'vidtest3': INFO3, 'vidtest4': INFO4}
+REPEATED = {'vidtest1': REPEATED1, 'vidtest2': REPEATED2, 'vidtest3': REPEATED3, 'vidtest4': REPEATED4}
 
 VIDEOS = list(GROUND_TRUTH)
 

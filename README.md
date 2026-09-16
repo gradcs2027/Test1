@@ -33,20 +33,39 @@ NTU-60 (ntu60_2d.pkl, pyskl) ──► نفس التطبيع ──► BiLSTM �
 | 22 | wave | | 43 | touch_head |
 
 الكلاسات دي **مختارة على مقاس فيديوهات الاختبار، مش على أساس F1 على NTU**.
-ده أهم قرار في المشروع كله وشرحه بالتفصيل في `cell2_other_class.py`.
+ده أهم قرار في المشروع كله وشرحه بالتفصيل في `lstm/cells/cell2_other_class.py`.
 
 أي حركة برّه القايمة (المشي مثلاً — مش موجود في NTU-60 أصلاً) المفروض
 تترد `other` عن طريق عتبة الثقة، مش عن طريق كلاس مدرّب.
 
 ## بنية الملفات
 
-الـ `.py` هي **المصدر الوحيد للحقيقة**. الـ `.ipynb` مولّد منها.
-جدول الملفات الكامل في `HANDOFF.md` قسم 5.
+**كل طريقة في فولدر لوحدها، ومعاها نتايجها و HANDOFF بتاعها.**
+
+```
+kaggle_nb_520b8d324a/
+├── shared/     الكود المشترك — paths · ground_truth · تطبيع · قياس · keypoints
+├── lstm/       ⭐ الطريقة الأساسية: BiLSTM على NTU-60
+├── fastdtw/    خط الأساس من غير داتاسِت (اللي الدكتور طلبه)
+└── dollar1/    خط الأساس التالت — لسه ماتشغّلش
+```
+
+| | |
+|---|---|
+| [`HANDOFF.md`](HANDOFF.md) | ⭐ الحالة الكاملة والأرقام — ابدأ من هنا |
+| [`shared/HANDOFF.md`](shared/HANDOFF.md) | المسارات · الـ ground truth |
+| [`lstm/HANDOFF.md`](lstm/HANDOFF.md) | الـ BiLSTM والخلايا |
+| [`fastdtw/HANDOFF.md`](fastdtw/HANDOFF.md) | الـ few-shot والأرقام النظيفة |
+| [`dollar1/HANDOFF.md`](dollar1/HANDOFF.md) | إيه اللي مانعه يشتغل |
+
+الـ `lstm/cells/*.py` هي **المصدر الوحيد للحقيقة**؛ الـ `.ipynb` مولّد منها
+بـ `apply_edits.py`، فمتعدّلوش بالإيد. جدول الملفات الكامل في
+[`HANDOFF.md`](HANDOFF.md) قسم 5.
 
 ## التشغيل
 
 ```bash
-python apply_edits.py && kaggle kernels push -p .
+python lstm/apply_edits.py && kaggle kernels push -p .
 ```
 
 ```bash
@@ -56,7 +75,7 @@ python fetch_results.py results
 مسار الـ few-shot بيشتغل محلياً من غير Kaggle ومن غير NTU خالص:
 
 ```bash
-python pose_extract.py && python run_crossvideo.py
+python shared/pose_extract.py && python fastdtw/run_crossvideo.py
 ```
 
 ## النتيجة الحالية — vidtest1.mp4 (37.5s)
@@ -84,8 +103,8 @@ wave     33.7-37.4  → 33.3-37.3  @94%
 
 الوحيدة الغلط: `rub_hands` اتقالت `clap` — زوج الخلط المعروف على NTU.
 
-المخرجات في `results/`: الفيديو المعنون، الخط الزمني، الـ confusion matrix،
-و `key.txt` / `seg.txt` فيهم الأرقام والسيجمنتس.
+المخرجات في `lstm/results/`: الفيديو المعنون، الخط الزمني، الـ confusion
+matrix، و `key.txt` / `seg.txt` فيهم الأرقام والسيجمنتس.
 
 ---
 
@@ -121,7 +140,7 @@ refinement   ← ندوّر حوالين المسار المسقَّط بشعا�
 يعني **مستحيل** يقول `other` — والفيديوهات معظمها سكون. الرقم اللي بيطلع
 كده واطي **مش لأن الطريقة ضعيفة، لأننا مانعناها تجاوب صح**.
 
-`notebook_fastdtw.py` فيه عتبة رفض **معايرة من بيانات التدريب** بدل كده:
+`fastdtw/cell_fastdtw_ntu.py` فيه عتبة رفض **معايرة من بيانات التدريب** بدل كده:
 ناخد 30 عينة من كل كلاس، نحسب مسافة كل واحدة من template كلاسها، والعتبة =
 المئوية 80 من التوزيع ده. كده الرفض مبني على بيانات ومُوازي لمنطق الـ LSTM.
 
@@ -144,7 +163,7 @@ refinement   ← ندوّر حوالين المسار المسقَّط بشعا�
 
 **1. الدقة الإجمالية لوحدها مضللة.** أغلب الـ ground truth إجابته `other`،
 فموديل بيقول `other` على الفيديو كله بياخد 35-86% حسب الفيديو. لازم تطبع
-خط الأساس جنب أي رقم. الـ notebook بيعمل كده تلقائي في `cell10`.
+خط الأساس جنب أي رقم. الـ notebook بيعمل كده تلقائي في `lstm/cells/cell10_timeline.py`.
 
 **2. تقليل عدد الكلاسات بيزوّد المشكلة مش بيحلها.** جرّبنا 12 → 4 → 3 كلاس.
 كل مرة NTU بتبقى أسهل (97.4% → 98.5% → **100%**) والـ softmax بيتشبّع،

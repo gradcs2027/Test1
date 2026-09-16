@@ -31,10 +31,16 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from render_gt import EDGES, FONT, PALETTE, draw_skeleton, open_writer
 from run_vidtest4 import predict, segments
 
-from paths import KP_DIR, OUT_DIR, VIDEO_DIR
+from paths import KP_DIR, VIDEO_DIR, out_dir
+
+# results/ جنب السكريبت ده — كل طريقة ليها نتايجها
+OUT_DIR = out_dir(__file__)
 
 FRAME_SKIP = 2
 
@@ -142,7 +148,6 @@ def render(video='vidtest4'):
     h = HEAD_H + vh + BAR_H
 
     out_path = OUT_DIR / f'pred_{video}.mp4'
-    OUT_DIR.mkdir(exist_ok=True)
     _, write, close = open_writer(out_path, fps, w, h)
 
     print(f'🎬 {video}: {total} فريم @ {fps:.0f}fps → {out_path.name}')

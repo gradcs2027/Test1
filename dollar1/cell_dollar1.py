@@ -13,15 +13,24 @@ $1 Recognizer Baseline
   أقل من DTW (20-30% تقريباً) لأن معلومة واحد مفصل ناقصة جداً.
 """
 
+import sys
+
 import numpy as np
 from scipy.spatial.distance import euclidean
 import matplotlib.pyplot as plt
+
+# طرفية الويندوز افتراضياً cp1252 وبتقع مع العربي والإيموجي
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 # ==============================================================================
 # ١. تحميل البيانات
 # ==============================================================================
 
 print("💾 تحميل البيانات...")
+
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
 
 from baselines_common import extract_templates, setup_sliding_windows, build_windows_for_baseline
 from baselines_common import enforce_min_duration, moving_average_predictions, score_predictions, print_results

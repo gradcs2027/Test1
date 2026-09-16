@@ -20,7 +20,10 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from fastdtw_core import fastdtw, dtw_full, count_cells_evaluated
+from fastdtw_algorithm import fastdtw, dtw_full, count_cells_evaluated
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from baselines_common import (
     extract_templates, setup_sliding_windows, build_windows_for_baseline,
     enforce_min_duration, moving_average_predictions, print_results,

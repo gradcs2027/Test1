@@ -47,14 +47,19 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from fastdtw_core import fastdtw
+from fastdtw_algorithm import fastdtw
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from skeleton_norm import normalize_skeleton, resample_to, NUM_FRAMES
 from baselines_common import (
     enforce_min_duration, moving_average_predictions, score_predictions,
 )
 
-KP_DIR = Path(__file__).resolve().parent / 'keypoints'
-OUT_DIR = Path(__file__).resolve().parent / '_scratch'
+from paths import KP_DIR, load_meta, out_dir
+
+# results/ جنب السكريبت ده — كل طريقة ليها نتايجها
+OUT_DIR = out_dir(__file__)
 
 # ==============================================================================
 # الإعدادات
@@ -111,15 +116,16 @@ def to_features(seq_norm, mode=None):
 
 
 def load_keypoints(name):
-    kp_path = KP_DIR / f'{name}_keypoints.npy'
-    meta_path = KP_DIR / f'{name}_meta.npy'
-    if not kp_path.exists():
-        raise FileNotFoundError(
-            f'{kp_path} مش موجود — شغّل `python pose_extract.py {name}` الأول'
-        )
-    kp = np.load(kp_path)
-    meta = np.load(meta_path, allow_pickle=True).item()
-    return kp, meta
+    """
+    (keypoints, meta) — بترجّع الـ meta **كاملة** مش الـ fps بس، لأن الطباعة
+    تحت محتاجة `duration_s` و `detect_rate` كمان.
+
+    ⚠️ كان فيه هنا نسخة تانية بتدوّر على `keypoints/` جنب السكريبت. بعد
+       إعادة التنظيم الفولدر ده بقى في `shared/`، فالسكريبت كان بيقع.
+       البحث عن الملفات ورسايل الخطأ كلها في `shared/paths.py` دلوقتي.
+    """
+    meta = load_meta(name)      # بترمي رسالة فيها المسار اللي دوّرت فيه
+    return np.load(KP_DIR / f'{name}_keypoints.npy'), meta
 
 
 # ==============================================================================

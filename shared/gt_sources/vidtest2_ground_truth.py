@@ -66,7 +66,7 @@ video_info = {
 annotated_actions = [(s, e, l) for s, e, l in ground_truth_vidtest2 if l != '?']
 
 # أسماء بديلة للتوافق مع الملفات القديمة
-# (notebook_fastdtw.py:213 بيستورد الاسم ده وكان بيقع لأنه مش موجود)
+# (fastdtw/cell_fastdtw_ntu.py بيستورد الاسم ده وكان بيقع لأنه مش موجود)
 ground_truth_segments_vidtest2 = ground_truth_vidtest2
 
 

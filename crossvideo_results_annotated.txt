@@ -1,0 +1,71 @@
+════════════════════════════════════════════════════════════════════════════════
+🎬 FastDTW — الاختبار عبر-الفيديوهات مع Annotation الكامل
+════════════════════════════════════════════════════════════════════════════════
+
+📊 الملخص السريع:
+  الدقة (Accuracy):       13.8% (4/29)
+  خط أساس الأغلبية:      20.7%
+  نسبة النجاح:          ❌ فشل
+  الصدفة (Chance):       12.5%
+
+📝 ماذا تعني النتائج:
+  ❌ النموذج أسوأ من الأغلبية بـ 6.9%
+     خط الأساس: قول stand_up على طول = 20.7%
+
+🎯 الدقة لكل حركة:
+  brush_hair    50.0%  ████████████              (1/2)
+  clapping       0.0%                            (0/3)
+  phone_call    50.0%  ████████████              (1/2)
+  sitting        0.0%                            (0/4)
+  spray_perfume   0.0%                            (0/3)
+  stand_up      33.3%  ████████                  (2/6)
+  walking        0.0%                            (0/3)
+  wave           0.0%                            (0/6)
+
+⚠️ ملاحظات مهمة:
+  • الـ Templates من فيديوهات مختلفة
+  • الاختبار على فيديوهات جديدة (كلا السياقات مختلفة)
+  • لا يوجد تسريب بيانات
+  • عدد العينات: 29 ظهور حقيقي
+  • الفروق المستخدمة (velocity features)
+  • تطبيع الشكل: نعم (shape normalization)
+
+📈 الدلالة الإحصائية:
+  P-value = 0.878
+  ❌ النتيجة غير دالة إحصائياً (p > 0.05)
+     يعني الفرق قد يكون من الصدفة وليس من جودة النموذج
+
+════════════════════════════════════════════════════════════════════════════════
+
+🔍 التفاصيل — كل عينة على حدة:
+Video        Time (s)        True         Pred         Distance   Status  
+--------------------------------------------------------------------------------
+vidtest1     0.0-3.0         clapping     brush_hair   1.0630     ❌ خطأ
+vidtest1     12.0-14.0       sitting      walking      1.1139     ❌ خطأ
+vidtest1     29.0-31.0       sitting      stand_up     0.8933     ❌ خطأ
+vidtest1     18.0-20.0       stand_up     spray_perfume 0.7937     ❌ خطأ
+vidtest1     31.0-32.0       stand_up     stand_up     1.0013     ✅ صح
+vidtest1     3.0-10.0        wave         brush_hair   0.9434     ❌ خطأ
+vidtest1     33.0-37.0       wave         stand_up     1.0748     ❌ خطأ
+vidtest2     18.0-22.0       phone_call   phone_call   1.0040     ✅ صح
+vidtest2     6.0-7.0         stand_up     brush_hair   0.4979     ❌ خطأ
+vidtest2     3.0-5.0         wave         brush_hair   0.7015     ❌ خطأ
+vidtest3     31.0-38.0       brush_hair   stand_up     0.5751     ❌ خطأ
+vidtest3     85.0-88.0       clapping     spray_perfume 0.9089     ❌ خطأ
+vidtest3     41.0-58.0       sitting      stand_up     0.8204     ❌ خطأ
+vidtest3     25.0-30.0       spray_perfume brush_hair   0.9678     ❌ خطأ
+vidtest3     2.0-4.0         stand_up     stand_up     1.0118     ✅ صح
+vidtest3     58.0-61.0       stand_up     spray_perfume 0.9928     ❌ خطأ
+vidtest3     21.0-24.0       walking      spray_perfume 1.0756     ❌ خطأ
+vidtest3     38.0-40.0       walking      phone_call   0.9948     ❌ خطأ
+vidtest3     61.0-63.0       wave         spray_perfume 0.9725     ❌ خطأ
+vidtest4     68.0-73.0       brush_hair   brush_hair   0.8628     ✅ صح
+vidtest4     22.0-26.0       clapping     stand_up     1.1144     ❌ خطأ
+vidtest4     33.0-40.0       phone_call   brush_hair   0.6027     ❌ خطأ
+vidtest4     9.0-10.0        sitting      brush_hair   0.9998     ❌ خطأ
+vidtest4     48.0-51.0       spray_perfume clapping     0.9089     ❌ خطأ
+vidtest4     57.0-62.0       spray_perfume brush_hair   0.8570     ❌ خطأ
+vidtest4     20.0-21.0       stand_up     brush_hair   0.8902     ❌ خطأ
+vidtest4     0.0-2.0         walking      brush_hair   0.9606     ❌ خطأ
+vidtest4     2.0-4.0         wave         walking      0.9886     ❌ خطأ
+vidtest4     53.0-55.0       wave         clapping     1.0473     ❌ خطأ

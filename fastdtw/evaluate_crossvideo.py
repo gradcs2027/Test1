@@ -52,8 +52,11 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from ground_truth import GROUND_TRUTH, VIDEOS, shared_labels, spans
-from oneshot_core import (NUM_FRAMES, balance_templates, cut_templates,
+from classifier import (NUM_FRAMES, balance_templates, cut_templates,
                           normalize_window, norm_distance, resample_linear,
                           to_features)
 from paths import load_keypoints
@@ -364,6 +367,75 @@ def main():
     print(f'\n  🔬 القيد الحقيقي: عندنا **{s_cross["n"]} ظهور حقيقي للحركة**')
     print('     في التلات فيديوهات كلهم. ده سقف الإحصاء، ومفيش بروتوكول')
     print('     بيزوّده. أي رقم من هنا لازم يتقال ومعاه العدد ده.')
+
+    # ---------- حفظ النتائج مع Annotation ----------
+    if s_cross:
+        results_file = 'crossvideo_results_annotated.txt'
+        with open(results_file, 'w', encoding='utf-8') as f:
+            f.write('═' * 80 + '\n')
+            f.write('🎬 FastDTW — الاختبار عبر-الفيديوهات مع Annotation الكامل\n')
+            f.write('═' * 80 + '\n\n')
+
+            # الملخص
+            f.write('📊 الملخص السريع:\n')
+            f.write(f'  الدقة (Accuracy):      {s_cross["acc"] * 100:5.1f}% ({s_cross["hit"]}/{s_cross["n"]})\n')
+            f.write(f'  خط أساس الأغلبية:     {s_cross["majority"] * 100:5.1f}%\n')
+            f.write(f'  نسبة النجاح:          {"✅ نجح" if s_cross["acc"] > s_cross["majority"] else "❌ فشل"}\n')
+            f.write(f'  الصدفة (Chance):      {s_cross["chance"] * 100:5.1f}%\n\n')
+
+            # التفسير
+            f.write('📝 ماذا تعني النتائج:\n')
+            if s_cross["acc"] > s_cross["majority"]:
+                gap = (s_cross["acc"] - s_cross["majority"]) * 100
+                f.write(f'  ✅ النموذج أفضل من الأغلبية بـ {gap:.1f}%\n')
+                f.write(f'     (قول {s_cross["majority_lab"]} على طول = {s_cross["majority"] * 100:.1f}%)\n\n')
+            else:
+                gap = (s_cross["majority"] - s_cross["acc"]) * 100
+                f.write(f'  ❌ النموذج أسوأ من الأغلبية بـ {gap:.1f}%\n')
+                f.write(f'     خط الأساس: قول {s_cross["majority_lab"]} على طول = {s_cross["majority"] * 100:.1f}%\n\n')
+
+            # الدقة لكل حركة
+            f.write('🎯 الدقة لكل حركة:\n')
+            for lab, (h, c) in sorted(s_cross['per_class'].items()):
+                acc = h / max(1, c) * 100
+                bar = '█' * int(acc / 4)
+                f.write(f'  {lab:<12} {acc:5.1f}%  {bar:<25} ({h}/{c})\n')
+
+            f.write('\n')
+            f.write('⚠️ ملاحظات مهمة:\n')
+            f.write(f'  • الـ Templates من فيديوهات مختلفة\n')
+            f.write(f'  • الاختبار على فيديوهات جديدة (كلا السياقات مختلفة)\n')
+            f.write(f'  • لا يوجد تسريب بيانات\n')
+            f.write(f'  • عدد العينات: {s_cross["n"]} ظهور حقيقي\n')
+            f.write(f'  • الفروق المستخدمة (velocity features)\n')
+            f.write(f'  • تطبيع الشكل: نعم (shape normalization)\n\n')
+
+            # الدلالة الإحصائية
+            p0 = s_cross['majority']
+            pv = binom_tail(s_cross['hit'], s_cross['n'], p0)
+            f.write('📈 الدلالة الإحصائية:\n')
+            f.write(f'  P-value = {pv:.3f}\n')
+            if pv > 0.05:
+                f.write('  ❌ النتيجة غير دالة إحصائياً (p > 0.05)\n')
+                f.write('     يعني الفرق قد يكون من الصدفة وليس من جودة النموذج\n')
+            else:
+                f.write('  ✅ النتيجة دالة إحصائياً (p ≤ 0.05)\n')
+                f.write('     يعني الفرق له معنى إحصائي\n')
+
+            f.write('\n' + '═' * 80 + '\n\n')
+
+            # تفاصيل كل عينة
+            f.write('🔍 التفاصيل — كل عينة على حدة:\n')
+            f.write(f'{"Video":<12} {"Time (s)":<15} {"True":<12} {"Pred":<12} {"Distance":<10} {"Status":<8}\n')
+            f.write('-' * 80 + '\n')
+
+            for r in cross:
+                s, e = r['span']
+                mark = '✅ صح' if r['pred'] == r['truth'] else '❌ خطأ'
+                f.write(f'{r["video"]:<12} {f"{s:.1f}-{e:.1f}":<15} {r["truth"]:<12} {r["pred"]:<12} {r["dist"]:.4f}     {mark}\n')
+
+        print(f'\n✅ تم حفظ النتائج مع Annotation في: {results_file}')
+        print(f'   تقدر تحمّل الملف وتبعته للدكتور')
 
 
 if __name__ == '__main__':

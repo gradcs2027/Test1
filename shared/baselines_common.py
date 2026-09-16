@@ -9,6 +9,12 @@ import numpy as np
 from scipy.spatial.distance import euclidean
 from collections import defaultdict
 
+# ⚠️ ده كان بيتستورد جوّه دالتين من `cell3_normalization` (خلية من نوتبوك
+#    الـ LSTM). التطبيقين كانوا **متطابقين حرفياً** — نفس الكود بـ docstring
+#    أطول. بقى استيراد واحد من shared، فاتشال التكرار والاعتماد على فولدر
+#    طريقة تانية في نفس الوقت.
+from skeleton_norm import normalize_skeleton
+
 # ==============================================================================
 # Templates Extraction — استخرج متوسط كل حركة من training data
 # ==============================================================================
@@ -43,8 +49,6 @@ def normalize_for_baseline(keypoints):
     تطبيع سريع لنافذة — نفس اللي في التدريب.
     keypoints: (frames, 34) بعد الاستخراج من الفيديو
     """
-    from cell3_normalization import normalize_skeleton
-
     # تحويل لـ (frames, 17, 2) عشان normalize_skeleton تتوقعها كذا
     kp_reshaped = keypoints.reshape(-1, 17, 2)
     # تطبيع
@@ -105,7 +109,6 @@ def build_windows_for_baseline(all_keypoints, centers_sk, WINDOW_FRAMES, effecti
         # ضغط للـ 30 فريم بالظبط زي التدريب
         sub = np.linspace(lo, hi - 1, MODEL_FRAMES, dtype=int)
 
-        from cell3_normalization import normalize_skeleton
         windows[i] = normalize_skeleton(all_keypoints[sub])
 
     return windows  # (num_windows, 30, 34)

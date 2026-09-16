@@ -6,22 +6,23 @@ JSON. ده المصدر الوحيد للحقيقة — الـ .ipynb ناتج،
 import json
 import pathlib
 
-HERE = pathlib.Path(__file__).parent
-NB = HERE / "notebook520b8d324a.ipynb"
+HERE = pathlib.Path(__file__).parent      # lstm/
+CELLS = HERE / "cells"                    # كود الخلايا، ملف لكل خلية
+NB = HERE / "lstm_ntu60.ipynb"
 
 REPLACEMENTS = {
-    2: HERE / "cell2_other_class.py",     # كل حركات الشخص الواحد (49 كلاس)
-    3: HERE / "cell3_normalization.py",   # الـ normalization المشترك
-    4: HERE / "cell4_split.py",           # مش بيعيد تعريف action_names
-    5: HERE / "cell5_model.py",           # شيل Masking اللي بيكسر cuDNN LSTM
-    6: HERE / "cell6_eval.py",            # تقييم يقرا مع 49 كلاس + top-k
-    7: HERE / "cell7_video.py",           # VIDEO_PATH في مكان واحد + الفيديو الجديد
-    8: HERE / "cell8_extract.py",         # يستخدم VIDEO_PATH + نسبة الاكتشاف
-    9: HERE / "cell9_smoothing.py",       # الـ windows + smoothing
-    10: HERE / "cell10_timeline.py",      # ground truth بتاع الفيديو المختبَر
+    2: CELLS / "cell2_other_class.py",     # كل حركات الشخص الواحد (49 كلاس)
+    3: CELLS / "cell3_normalization.py",   # الـ normalization المشترك
+    4: CELLS / "cell4_split.py",           # مش بيعيد تعريف action_names
+    5: CELLS / "cell5_model.py",           # شيل Masking اللي بيكسر cuDNN LSTM
+    6: CELLS / "cell6_eval.py",            # تقييم يقرا مع 49 كلاس + top-k
+    7: CELLS / "cell7_video.py",           # VIDEO_PATH في مكان واحد + الفيديو الجديد
+    8: CELLS / "cell8_extract.py",         # يستخدم VIDEO_PATH + نسبة الاكتشاف
+    9: CELLS / "cell9_smoothing.py",       # الـ windows + smoothing
+    10: CELLS / "cell10_timeline.py",      # ground truth بتاع الفيديو المختبَر
 }
 
-# cell_diag.py خلية تشخيص لمرة واحدة كانت بتتحقن هنا (بـ tag domain-diag).
+# cells/cell_diag.py خلية تشخيص لمرة واحدة كانت بتتحقن هنا (بـ tag domain-diag).
 # خلصت شغلها (الحكم: التأطير مختلف، مش فرق بنيوي) واتشالت من الـ notebook.
 # الملف لسه على الديسك لو احتجناه تاني. السطر ده بيمسح أي نسخة قديمة منها
 # لو الـ notebook اتسحب من Kaggle وهي جواه.

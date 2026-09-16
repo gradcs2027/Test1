@@ -35,6 +35,9 @@ for i in range(len(window_times_sk) - 1):
 # ⚠️ الجدول ده كان مكتوب هنا بإيد — واحدة من 5 نسخ متطابقة في المشروع.
 #    اتشال 2026-08-31 وبقى بييجي من مصدر واحد. السبب: نسخة vidtest3
 #    عاشت شهر وهي غلط تماماً من غير ما حد ياخد باله. HANDOFF قسم 6.8
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from ground_truth import GROUND_TRUTH
 
 ground_truth_segments = GROUND_TRUTH['vidtest1']

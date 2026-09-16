@@ -2,7 +2,7 @@
   "id": "abdallahhsamir/notebook520b8d324a",
   "id_no": 132092702,
   "title": "notebook520b8d324a",
-  "code_file": "notebook520b8d324a.ipynb",
+  "code_file": "lstm/lstm_ntu60.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,
@@ -11,7 +11,8 @@
   "enable_internet": true,
   "keywords": [],
   "dataset_sources": [
-    "abdallahhsamir/testvid"
+    "abdallahhsamir/testvid",
+    "jizeyong/hmdb51"
   ],
   "kernel_sources": [],
   "competition_sources": [],

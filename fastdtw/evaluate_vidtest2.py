@@ -25,9 +25,12 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-from oneshot_core import (build_multiscale_windows, cut_templates,
-                          distance_cache, majority_smooth, norm_distance,
+from classifier import (build_multiscale_windows, cut_templates,
+                          cached_distances, majority_smooth, norm_distance,
                           window_edges)
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from ground_truth import GROUND_TRUTH, REPEATED as _REP
 from paths import CACHE_DIR, load_keypoints
 
@@ -110,18 +113,12 @@ def run(mode='vel', shape_norm=True, smooth=SMOOTH_K, hubness=True,
     feats, E = build_multiscale_windows(kp, fps, centers, SCALES,
                                         mode=mode, shape_norm=shape_norm)
 
+    if verbose:
+        print(f'  حساب {len(centers) * len(SCALES) * len(templates):,} '
+              f'مسافة DTW (أو تحميلها من الكاش)...')
     key = f'v2_{mode}_{int(shape_norm)}_s{STRIDE}_r{RADIUS}'
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cf = CACHE_DIR / f'{key}.npy'
-
-    if cf.exists():
-        D = np.load(cf)
-    else:
-        if verbose:
-            print(f'  حساب {len(centers) * len(SCALES) * len(templates):,} '
-                  f'مسافة DTW...')
-        D = distance_cache(feats, templates, SCALES, radius=RADIUS)
-        np.save(cf, D)
+    D = cached_distances(CACHE_DIR / f'{key}.npy', feats, templates, SCALES,
+                         radius=RADIUS)
 
     if hubness:
         D = hubness_correct(D)

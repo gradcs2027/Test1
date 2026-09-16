@@ -40,9 +40,15 @@ Few-Shot FastDTW — المكتبة الأساسية (من غير أي داتا�
    بنستخدم تصويت الأغلبية (majority vote) بدلها، وده الصح للفئات.
 """
 
+import hashlib
+from pathlib import Path
+
 import numpy as np
 
-from fastdtw_core import fastdtw
+from fastdtw_algorithm import fastdtw
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from skeleton_norm import (L_HIP, L_SHO, NUM_FRAMES, R_HIP, R_SHO,
                            fill_missing_frames)
 
@@ -341,6 +347,67 @@ def distance_cache(feats, templates, scales, radius=1, progress=None):
             progress(si + 1, len(scales))
 
     return D
+
+
+def cached_distances(cache_file, feats, templates, scales, radius=1,
+                     progress=None):
+    """
+    نفس `distance_cache` بس بتخزين على الديسك — وبتحقّق إن الملف **يخص
+    الـ templates دي بالذات**.
+
+    🐛 البق اللي الدالة دي اتعملت عشانه (2026-09-01):
+       الكاش كان مفتاحه الإعدادات بس — `v2_vel_1_s5_r1.npy` يعني
+       (فيديو، تمثيل، تطبيع شكل، خطوة، radius). **مافيش فيه أي حاجة عن
+       الـ templates**، والـ templates بتيجي من `ground_truth.py`.
+
+       فلما جدول vidtest2 اتصحّح وبقى `sit_down` و `stand_up` منفصلين
+       بدل حركة واحدة (4 -> 5 حركات)، اللي حصل:
+
+         ١. الملف القديم شكله (171, 3, **4**) اتحمّل زي ما هو
+         ٢. `D.reshape(len(centers), -1)` عدّت عادي — 12 عمود بدل 15،
+            والـ reshape مابيشتكيش طول ما العدد بيقسم
+         ٣. `tl[i % len(templates)]` بقت بتقسّم على **5** بدل 4
+            -> كل اللابلز اتزحلقت
+
+       النتيجة: **صفر تحذير، صفر استثناء، وأرقام غلط**. الرقم اللي اتسجّل
+       في HANDOFF (17.9% "تحت الصدفة" على vidtest2) كان من النوع ده.
+       الرقم الصح بكاش نضيف: 92.3%.
+
+       اتأكدنا إزاي؟ اتعمل كاش بـ 4 templates عمداً واتشغّل الكود بـ 5:
+       طلّع **0.0%** من غير ما يقع. ده مش تدهور تدريجي، ده خرج عشوائي.
+
+    الإصلاح حتّة اتنين: البصمة في اسم الملف، **و** فحص الشكل بعد التحميل.
+    البصمة لوحدها ماتكفيش — أي حاجة تانية تغيّر شكل `D` (عدد النوافذ
+    مثلاً لما الـ STRIDE يتغيّر) لازم تتمسك كمان.
+    """
+    expected = (len(feats[scales[0]]), len(scales), len(templates))
+    cf = Path(str(cache_file).replace('.npy', '')
+              + f'_{_templates_fingerprint(templates)}.npy')
+    cf.parent.mkdir(parents=True, exist_ok=True)
+
+    if cf.exists():
+        D = np.load(cf)
+        if D.shape == expected:
+            return D
+        # مفروض مايحصلش بعد البصمة — بس لو حصل، نحسب من الأول ومانسكتش
+        print(f'  ⚠️ كاش شكله غلط ({D.shape} بدل {expected}) — بيتحسب من الأول')
+
+    D = distance_cache(feats, templates, scales, radius=radius,
+                       progress=progress)
+    np.save(cf, D)
+    return D
+
+
+def _templates_fingerprint(templates):
+    """
+    بصمة قصيرة للـ templates: عددها · أسماؤها · القصاصات اللي اتقصّت منها.
+
+    الأسامي لوحدها ماتكفيش — لو الـ ground truth غيّر توقيت قصاصة من غير
+    ما يغيّر اسمها، الـ template بيبقى مختلف والمسافات بتبقى لاغية.
+    """
+    sig = '|'.join(f'{t["label"]}@{t["span"][0]:.3f}-{t["span"][1]:.3f}'
+                   for t in templates)
+    return hashlib.md5(sig.encode('utf-8')).hexdigest()[:8]
 
 
 def classify(D, energy, labels_of_templates, gate, threshold):

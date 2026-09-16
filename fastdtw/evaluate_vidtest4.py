@@ -30,9 +30,12 @@ import numpy as np
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+# بيضيف shared/ لمسار الاستيراد — لازم قبل أي استيراد منها
+import _bootstrap  # noqa: F401
+
 from ground_truth import GROUND_TRUTH
-from oneshot_core import (build_multiscale_windows, cut_templates,
-                          distance_cache, majority_smooth, window_edges)
+from classifier import (build_multiscale_windows, cut_templates,
+                          cached_distances, majority_smooth, window_edges)
 from paths import CACHE_DIR, load_keypoints, load_meta
 
 TARGET = 'vidtest4'
@@ -60,7 +63,7 @@ def build_bank(mode='vel', shape_norm=True):
     موجودة في أكتر من فيديو بياخد منهم كلهم — ده كويس، بيدّي تنوّع في
     الكاميرا والشخص.
     """
-    from oneshot_core import balance_templates
+    from classifier import balance_templates
 
     out = []
     for v in SOURCES:
@@ -98,18 +101,12 @@ def predict(mode='vel', shape_norm=True, smooth=SMOOTH_K, hubness=True,
     feats, E = build_multiscale_windows(kp, fps, centers, SCALES,
                                         mode=mode, shape_norm=shape_norm)
 
+    if verbose:
+        print(f'  حساب {len(centers) * len(SCALES) * len(templates):,} '
+              f'مسافة DTW (أو تحميلها من الكاش)...')
     key = f'v4_{mode}_{int(shape_norm)}_s{STRIDE}_r{RADIUS}_m{MAX_PER_LABEL}'
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cf = CACHE_DIR / f'{key}.npy'
-
-    if cf.exists():
-        D = np.load(cf)
-    else:
-        if verbose:
-            print(f'  حساب {len(centers) * len(SCALES) * len(templates):,} '
-                  f'مسافة DTW...')
-        D = distance_cache(feats, templates, SCALES, radius=RADIUS)
-        np.save(cf, D)
+    D = cached_distances(CACHE_DIR / f'{key}.npy', feats, templates, SCALES,
+                         radius=RADIUS)
 
     Dz = hubness_correct(D) if hubness else D
     flat = Dz.reshape(len(centers), -1)

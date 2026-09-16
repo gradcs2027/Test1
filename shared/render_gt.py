@@ -31,7 +31,10 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 from ground_truth import EXCLUDED, GROUND_TRUTH, STILL, VIDEO_INFO
 
-from paths import KP_DIR, OUT_DIR, VIDEO_DIR  # noqa: F401
+from paths import KP_DIR, VIDEO_DIR, out_dir
+
+# results/ جنب السكريبت ده — كل طريقة ليها نتايجها
+OUT_DIR = out_dir(__file__)
 FRAME_SKIP = 2                      # نفس اللي في pose_extract.py
 CRF = 23                            # 18=أنقى/أكبر، 28=أصغر/أوحش
 
@@ -222,7 +225,6 @@ def render(video):
     h = HEAD_H + vh + BAR_H                          # شريط + فيديو + شريط
 
     out_path = OUT_DIR / f'gt_{video}.mp4'
-    OUT_DIR.mkdir(exist_ok=True)
     _, write, close = open_writer(out_path, fps, w, h)
 
     print(f'\n🎬 {video}: {total} فريم @ {fps:.0f}fps → {out_path.name}')

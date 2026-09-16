@@ -31,7 +31,7 @@ FastDTW — التنفيذ الأساسي (Salvador & Chan, 2007)
    FastDTW بيدّي نفس الإجابة بالظبط وأسرع.
 
 الاستخدام:
-    from fastdtw_core import fastdtw, dtw_full
+    from fastdtw_algorithm import fastdtw, dtw_full
     distance, path = fastdtw(seq1, seq2, radius=1)
 """
 
@@ -185,7 +185,7 @@ def fastdtw(x, y, radius=1, dist=_euclidean):
         (distance, path)
 
     ⚠️ FastDTW **تقريب** مش حل مضبوط. ممكن يطلع مسافة أكبر شوية من
-       الـ DTW الكامل. في notebook_fastdtw.py بنقيس الفرق ده فعلياً.
+       الـ DTW الكامل. في cell_fastdtw_ntu.py بنقيس الفرق ده فعلياً.
     """
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
