@@ -114,6 +114,9 @@ CLIPS_PER_LABEL = 2
 EXT_DIR = KP_OUT / 'external'
 LOCAL_EXT_DIR = ROOT / 'shared' / 'keypoints' / 'external_local'
 
+# متغيّر عشان اختبارات المسارات تقدر تحطّ شجرة مزيّفة بدله من غير Kaggle
+KAGGLE_INPUT = Path('/kaggle/input')
+
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
@@ -136,8 +139,8 @@ def _dataset_dir(owner_slug):
     """
     owner, slug = owner_slug.split('/')
     for candidate in (
-        Path('/kaggle/input/datasets') / owner / slug,
-        Path('/kaggle/input') / slug,
+        KAGGLE_INPUT / 'datasets' / owner / slug,
+        KAGGLE_INPUT / slug,
     ):
         if candidate.is_dir():
             return candidate
@@ -234,6 +237,49 @@ def _find_charades_root():
         if rgb_dir is not None:
             break
     return csv_path, (rgb_dir if rgb_dir is not None else csv_path.parent)
+
+
+def _resolve_frames_dir(start, sample_ids, max_depth=3):
+    """
+    الفولدر اللي جواه **فعلاً** فولدرات فريمات الفيديوهات (<video_id>/*.jpg).
+
+    ⚠️ ليه الدالة دي موجودة؟ اللي بيرفع الداتاسِت بيلفّه في فولدر باسم
+    نفسه أكتر من مرة. شفنا ده بعنينا في نفس التشغيلة: HMDB51 طلع في
+    `.../hmdb51/rawframes/rawframes/` (الاسم مكرر). Charades نفس الحكاية —
+    أول فولدر اسمه فيه 'rgb' كان `.../charades/Charades_v1_rgb` بس فولدرات
+    الفريمات جوّه `Charades_v1_rgb/Charades_v1_rgb/<video_id>/`. النتيجة
+    كانت إن كل قصاصات Charades الستة طلعت **صفر فريم من غير أي خطأ** —
+    بس تحذير "فريمات قليلة" في الآخر، وضاعت تشغيلة كاملة قبل ما ننتبه.
+
+    فبدل ما نخمّن التعشيش، بنتأكد بالـ video_id الحقيقي اللي طالع من
+    الـ CSV: الفولدر الصح هو اللي `<video_id>` موجود جواه.
+    """
+    candidate = start
+    tried = []
+    for _ in range(max_depth):
+        tried.append(candidate)
+        hit = next((candidate / vid for vid in sample_ids
+                    if (candidate / vid).is_dir()), None)
+        if hit is not None:
+            names = sorted(p.name for p in hit.iterdir())
+            if any(n.lower().endswith('.jpg') for n in names):
+                return candidate
+            # لقينا فولدر الفيديو بس مفيهوش jpg — نقولها صريح بأسامي
+            # الملفات الحقيقية بدل ما نرجّع مسار بيطلّع صفر فريم بالسكوت.
+            raise FileNotFoundError(
+                f'لقيت فولدر الفيديو {hit} بس مفيهوش أي ملف .jpg — '
+                f'اللي جواه فعلاً: {names[:10]}')
+        subdirs = [d for d in candidate.iterdir() if d.is_dir()]
+        nested = [d for d in subdirs if 'rgb' in d.name.lower()] or subdirs
+        if len(nested) != 1:
+            break
+        candidate = nested[0]
+
+    sample_dirs = sorted(d.name for d in candidate.iterdir() if d.is_dir())[:10]
+    raise FileNotFoundError(
+        f'مالقتش فولدرات فريمات الفيديوهات. جرّبت: {[str(p) for p in tried]}\n'
+        f'دوّرت على أي واحد من الـ video_id دول: {sample_ids[:5]}\n'
+        f'اللي موجود جوّه آخر مسار جرّبته: {sample_dirs}')
 
 
 def _charades_candidates(csv_path):
@@ -354,7 +400,8 @@ def main():
     manifest = []
 
     # ── مصدر محلي: فيديوهاتك + NTU60 ──
-    manifest += _load_local_templates()
+    local = _load_local_templates()
+    manifest += local
 
     # ── HMDB51 (rawframes) ──
     root = _find_rawframes_root('clap', 'jizeyong/hmdb51')
@@ -411,9 +458,12 @@ def main():
                   f'({time.perf_counter() - t0:.1f}s)')
 
     # ── Charades (rawframes + قص بالـ annotations) ──
-    csv_path, rgb_dir = _find_charades_root()
-    print(f'\n📁 لقيت Charades: {csv_path.name} + فريمات في {rgb_dir}')
+    csv_path, rgb_start = _find_charades_root()
     charades_candidates = _charades_candidates(csv_path)
+    sample_ids = [vid for cands in charades_candidates.values()
+                  for vid, _s, _e in cands[:3]]
+    rgb_dir = _resolve_frames_dir(rgb_start, sample_ids)
+    print(f'\n📁 لقيت Charades: {csv_path.name} + فريمات في {rgb_dir}')
 
     # فئتين كود بيتقاسوا نفس حركتنا (wake_up) — بنجمعهم قبل ما نقص لـ CLIPS_PER_LABEL
     by_our_label = {}
@@ -470,14 +520,23 @@ def main():
     manifest = _cap_per_label(manifest, CLIPS_PER_LABEL)
     np.save(EXT_DIR / 'manifest.npy', manifest, allow_pickle=True)
 
-    by_label_final = {}
+    # ⚠️ لازم نعدّ على **كل** الحركات المتوقّعة مش بس اللي في الـ manifest:
+    # الحركة اللي جابت صفر قصاصة مش بتظهر في الـ manifest أصلاً، فكانت
+    # بتختفي من التحذير خالص. حصل فعلاً: turn_on_light و wake_up طلعوا
+    # صفر لما Charades فشلت، واللوج قال "16 حركة" و حذّر من phone_call
+    # و spray_perfume بس — الاتنين الضايعين مكانوش مذكورين ولا كلمة.
+    expected = (
+        {m['label'] for m in local}
+        | set(HMDB_TO_LABEL.values()) | set(CCTV_TO_LABEL.values())
+        | set(CHARADES_TO_LABEL.values()) | set(UCF101_TO_LABEL.values())
+    )
+    counts = {label: 0 for label in expected}
     for m in manifest:
-        by_label_final.setdefault(m['label'], 0)
-        by_label_final[m['label']] += 1
-    short = {l: n for l, n in by_label_final.items() if n < CLIPS_PER_LABEL}
+        counts[m['label']] = counts.get(m['label'], 0) + 1
+    short = {l: n for l, n in sorted(counts.items()) if n < CLIPS_PER_LABEL}
 
     print(f'\n✅ خلص — {len(manifest)} قصاصة خارجية في {EXT_DIR} '
-          f'({len(by_label_final)} حركة)')
+          f'({len(counts) - len(short)} حركة كاملة من {len(counts)} متوقّعة)')
     if short:
         print(f'⚠️ حركات ناقصة قصاصات ({CLIPS_PER_LABEL} مطلوبين): {short}')
 

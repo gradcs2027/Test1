@@ -195,10 +195,50 @@ sit_down يتحسّن" مبني على سوء فهم.
 ☐ 1. شغّل cell_fastdtw_ntu.py (مسار NTU) على التلات فيديوهات
 ☐ 2. الجدول النهائي: FastDTW مقابل LSTM مقابل $1
 ☐ 3. توقيتات vidtest4 -> يبقى فيه رقم دقة لـ run_vidtest4.py
-☐ 4. commit/push لتعديلات 2026-09-18 (18 حركة/5 مصادر) — محتاج موافقة
-     المستخدم الأول (تفاصيل في ../.wolf/memory.md)
-☐ 5. على Kaggle: ضيف داتاسِت jizeyong/charades و
-     matthewjansen/ucf101-action-recognition (زي HMDB51/CCTV)، وشغّل
-     build_external_templates.py قبل experiment_frame_scales.py
+☑ 4. تعديلات 2026-09-18 (18 حركة/5 مصادر) اتعمللها commit/push (تفاصيل
+     كاملة في `../.wolf/memory.md`، أقسام "2026-09-18"):
+     - `1a67dbf`: إصلاح `_dataset_dir(owner_slug)` — كان فيه بق أداء
+       بيخلّي البحث عن داتاسِت يمشي في `/kaggle/input` **كله** (100GB+)
+       بدل الداتاسِت المطلوب بس، وده كان بيوقف الخلية على Kaggle بعد
+       HMDB51. + توسيع `experiment_frame_scales.py` FRAME_CONFIGS لـ
+       10-100.
+     - `6a666ac`: إصلاح `CCTV_TO_LABEL['lyingdown']` →
+       `CCTV_TO_LABEL['lying_down']` (الاسم الحقيقي للفولدر/الملفات في
+       داتاسِت CCTV فيه underscore).
+     - `baf8774`: إصلاح `_find_charades_root()` — كان بيلفّ
+       `root.rglob('Charades_v1_train.csv')` في `list()`، وده بيجبر
+       الـ generator يمشي شجرة Charades **كاملة** (75GB) حتى بعد
+       ما يلاقي الملف. بقت `next(..., None)` عشان توقف فور أول تطابق.
+     ✔️ التلاتة اتأكدوا شغّالين من لوج Kaggle: HMDB51 وCCTV وUCF101
+     خلصوا بقصاصتين لكل حركة، وCharades لقت الـ CSV بسرعة.
+☐ 4ب. بقّين اتكشفوا من نفس اللوج، اتصلّحوا واتجرّبوا محلياً — **لسه
+     محتاجين commit/push** (محتاج موافقة المستخدم):
+     - **صفر فريم في Charades**: الست قصاصات كلها طلعت صفر من غير أي
+       خطأ (تحذير "فريمات قليلة" بس). فولدر الفريمات متعشّش مرتين:
+       `Charades_v1_rgb/Charades_v1_rgb/<video_id>/` — نفس عادة الرافع
+       اللي في HMDB51 (`rawframes/rawframes`). الحل: `_resolve_frames_dir`
+       بتتأكد من المسار بالـ video_id الحقيقي اللي طالع من الـ CSV،
+       وبترمي خطأ واضح بدل ما ترجّع مسار بيطلّع صفر بالسكوت.
+     - **التقرير النهائي كان بيخبّي الحركات الصفر**: العدّ كان من
+       الـ manifest، والحركة اللي جابت صفر مش داخلة فيه أصلاً. عشان
+       كده اللوج قال "16 حركة" وحذّر من `phone_call` و`spray_perfume`
+       بس، و`turn_on_light` و`wake_up` الضايعين مكانوش مذكورين. دلوقتي
+       العدّ من قايمة الـ18 المتوقّعين.
+☑ 4ج. اختبارات محلية اتعملت في `fastdtw/tests/` (متسجّلة في git).
+     كلها بتشتغل على الجهاز العادي: من غير Kaggle ولا كارت شاشة ولا
+     فيديوهات المستخدم. شغّلها من فولدر المشروع:
+     - `python fastdtw/tests/test_dataset_finders.py` — 28 اختبار
+       لدوال المسارات على شجرة Kaggle مزيّفة (ثانيتين).
+     - `python fastdtw/tests/test_end_to_end.py` — بيبني صور وفيديوهات
+       حقيقية وبيشغّل `main()` كلها بموديل YOLO. آخر تشغيلة: 35 قصاصة
+       و18 حركة، وبيتأكد إن Charades طلّعت فريمات فعلاً مش صفر.
+     - `python fastdtw/tests/test_frame_scales_smoke.py` — بيتأكد إن
+       `experiment_frame_scales.py` مش بيقع (7 ثواني). ⚠️ أرقام الدقة
+       اللي بتطلع منه **مش** نتيجة التجربة — البنك المحلي 8 حركات بس.
+     الملفات المؤقتة بتتبني في `../_scratch/` (متجاهَل في git).
+☑ 5. على Kaggle: داتاسِتات jizeyong/charades و
+     matthewjansen/ucf101-action-recognition و
+     jonathannield/cctv-action-recognition-dataset اتضافوا فعلاً
+     (بالإضافة لـ HMDB51) عن طريق "+ Add Input" في النوتبوك.
 ☐ 6. spray_perfume لسه ناقصه قصاصة تانية — مفيش مصدر مطابق لقيناه
 ```
