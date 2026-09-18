@@ -22,6 +22,7 @@ HMDB51 عنده فئة عامة واحدة بس اسمها 'sit' — مفيش ت
     python experiment_frame_scales.py
 """
 import sys
+import time
 
 import numpy as np
 
@@ -31,7 +32,13 @@ from ground_truth import VIDEOS, spans
 from paths import KP_OUT, load_keypoints, out_dir
 
 if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    # ⚠️ line_buffering=True مش رفاهية: من غيرها بايثون بيجمّع المخرجات في
+    # ذاكرة مؤقتة (8KB) لما تكون رايحة لأنبوبة مش لشاشة — زي `!python x.py`
+    # في نوتبوك Kaggle. السكريبت ده بيطبع ~400 بايت بعد كل إعداد، يعني كان
+    # بيخلّص الجدول الأول كله قبل ما يظهر حرف واحد، والتشغيلة شكلها واقفة
+    # عشر دقايق وهي شغّالة عادي. حصل فعلاً 2026-09-18.
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace',
+                           line_buffering=True)
 
 FRAME_CONFIGS = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
 RADIUS = 1
@@ -202,9 +209,25 @@ def main():
     print(f'\n📚 القصاصات الخارجية: {len(ext_templates)} '
           f'({len(labels_needed)} حركة: {", ".join(labels_needed)})')
 
+    # حجم الشغل قدّام المستخدم من أول لحظة — أرخص من إنه يقعد يخمّن هيقف
+    # امتى. النسخة المطبّعة بتزوّد معايرة (كل template ضد كل template).
+    n_windows = len(build_test_windows(labels_needed, FRAME_CONFIGS[0]))
+    n_tpl = len(ext_templates)
+    per_config = 2 * n_windows * n_tpl + n_tpl * (n_tpl - 1) // 2
+    print(f'🧮 {n_windows} نافذة اختبار × {n_tpl} قصاصة × '
+          f'{len(FRAME_CONFIGS)} إعداد × نسختين (خام + مطبّع) = '
+          f'{per_config * len(FRAME_CONFIGS):,} مقارنة DTW')
+    print('   الإعدادات الكبيرة أبطأ بكتير من الصغيرة — التقدّم مش بالتساوي')
+
+    t_start = time.perf_counter()
     summaries = []
-    for n_frames in FRAME_CONFIGS:
+    for i, n_frames in enumerate(FRAME_CONFIGS, 1):
+        t0 = time.perf_counter()
+        print(f'\n⏳ [{i}/{len(FRAME_CONFIGS)}] {n_frames} فريم (خام)...',
+              end='', flush=True)
         results = run_config(n_frames, ext_templates, labels_needed)
+        print(f' تمّ في {time.perf_counter() - t0:.0f}s '
+              f'(إجمالي {time.perf_counter() - t_start:.0f}s)')
         summaries.append(summarize(n_frames, results))
 
     print(f'\n{"=" * 70}')
@@ -222,8 +245,13 @@ def main():
     print('  🧪 نفس التجربة بس بتطبيع Z (z-normalization) على كل template')
     print(f'{"=" * 70}')
     summaries_z = []
-    for n_frames in FRAME_CONFIGS:
+    for i, n_frames in enumerate(FRAME_CONFIGS, 1):
+        t0 = time.perf_counter()
+        print(f'\n⏳ [{i}/{len(FRAME_CONFIGS)}] {n_frames} فريم (مطبّع)...',
+              end='', flush=True)
         results_z = run_config_z(n_frames, ext_templates, labels_needed)
+        print(f' تمّ في {time.perf_counter() - t0:.0f}s '
+              f'(إجمالي {time.perf_counter() - t_start:.0f}s)')
         summaries_z.append(summarize(n_frames, results_z, title='🧪 (مطبّع)'))
 
     print(f'\n{"=" * 70}')
