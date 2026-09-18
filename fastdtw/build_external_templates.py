@@ -211,12 +211,15 @@ def _find_charades_root():
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
     root = _dataset_dir('jizeyong/charades')
-    csvs = list(root.rglob('Charades_v1_train.csv'))
-    if not csvs:
+    # ⚠️ next(..., None) لازم مش list(...): rglob() بترجع generator، ولو
+    # لفّيناها في list() بتكمل تمشي في الـ75GB **كلها** لغاية ما تتأكد
+    # مفيش تطابق تاني حتى بعد ما تلاقي أول ملف — ده نفس عيب الأداء اللي
+    # صلحناه في _dataset_dir بس هنا. next() بيوقف فور أول تطابق.
+    csv_path = next(root.rglob('Charades_v1_train.csv'), None)
+    if csv_path is None:
         raise FileNotFoundError(
             'مالقتش Charades_v1_train.csv جوّه jizeyong/charades — '
             'اتأكد إنه فعلاً بالبنية المتوقّعة')
-    csv_path = csvs[0]
 
     # بندوّر على فولدر فريمات الـ rgb، بس من غير ما ننزل جوّه فولدرات
     # فريمات كل فيديو على حدة (فيه آلاف منها) — أول ما نلاقي فولدر اسمه
