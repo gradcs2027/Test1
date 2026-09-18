@@ -1,8 +1,8 @@
 """
 تجربة: عدد الفريمات في الـ template/window بيأثر إزاي على "ثقة" FastDTW؟
 
-3 إعدادات متوازية بالظبط زي بعض في كل حاجة إلا عدد الفريمات:
-10 فريم، 20 فريم، 30 فريم. الـ templates كلها **خارجية** جايه من
+10 إعدادات متوازية بالظبط زي بعض في كل حاجة إلا عدد الفريمات:
+10، 20، 30 ... لحد 100 فريم (فاصل 10). الـ templates كلها **خارجية** جايه من
 5 مصادر مختلفة (build_external_templates.py) — مفيش ولا فريم من نفس
 الفيديو اللي بنقيس عليه، عشان صفر تسريب. الاختبار على القصاصات الحقيقية
 من vidtest1-4 عند الأزمنة المعروفة (ground truth) بس للحركات اللي عندها
@@ -33,7 +33,7 @@ from paths import KP_OUT, load_keypoints, out_dir
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-FRAME_CONFIGS = (10, 20, 30)
+FRAME_CONFIGS = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
 RADIUS = 1
 EXT_DIR = KP_OUT / 'external'
 OUT_DIR = out_dir(__file__)
@@ -193,7 +193,7 @@ def summarize(n_frames, results, title='📐'):
 
 def main():
     print('=' * 70)
-    print('  🎬 تجربة عدد الفريمات: 10 مقابل 20 مقابل 30')
+    print('  🎬 تجربة عدد الفريمات: من 10 لحد 100 (فاصل 10)')
     print('  (templates خارجية من HMDB51 — اختبار على vidtest1-4)')
     print('=' * 70)
 

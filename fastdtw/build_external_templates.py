@@ -118,23 +118,47 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 
-def _find_rawframes_root(marker_dir):
+def _dataset_dir(owner_slug):
     """
-    بيدوّر على الفولدر اللي جواه فولدرات الحركات (marker_dir بيتأكد بيه).
+    مسار داتاسِت معيّن بالاسم (زي 'jizeyong/hmdb51') من غير ما ندوّر
+    في كل الداتاسِتس التانية.
 
-    مش هاردكودينج للمسار عشان Kaggle بيحط اسم الداتاسِت في المسار،
-    وممكن يبقى فيه تعشيش زيادة. بندوّر بالاسم مش بعدد المستويات.
+    ⚠️ ليه الدالة دي موجودة؟ الشكل القديم كان بيعمل
+    `Path('/kaggle/input').iterdir()` ويمشي جوّه **كل حاجة تحتها**. لو
+    Kaggle حاطط كل الداتاسِتس تحت فولدر واحد وسيط (`/kaggle/input/datasets/
+    <owner>/<slug>/...` — ده اللي شفناه فعلاً في اللوج)، بقى `iterdir()`
+    بيرجّع فولدر واحد بس ('datasets')، فأي دالة بتدوّر على حاجة كانت
+    بتمشي في الـ100+ جيجا بتوع الخمس داتاسِتس **مع بعض** بدل ما تمشي في
+    اللي محتاجاه بس — وده اللي خلّى خطوة CCTV تقعد شغالة من غير خلاص
+    (بتمشي في الـ75 جيجا بتوع Charades من غير أي داعي وهي بتدوّر على
+    CCTV بس). الدالة دي بتجرّب المسارين المعروفين (الجديد بالـ owner،
+    والقديم من غيره) وترجع أول واحد موجود فعلاً — من غير أي مشي زيادة.
     """
+    owner, slug = owner_slug.split('/')
+    for candidate in (
+        Path('/kaggle/input/datasets') / owner / slug,
+        Path('/kaggle/input') / slug,
+    ):
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(
+        f'مالقتش داتاسِت {owner_slug} في /kaggle/input — اتأكد إنه مضاف '
+        f'في kernel-metadata.json وإنه فعلاً متوصّل بالنوتبوك')
+
+
+def _find_rawframes_root(marker_dir, owner_slug):
+    """بيدوّر على الفولدر اللي جواه فولدرات الحركات (marker_dir بيتأكد
+    بيه) **جوّه داتاسِت واحد بس** — مش كل /kaggle/input."""
     if not ON_KAGGLE:
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
-    for root in sorted(Path('/kaggle/input').iterdir()):
-        for p in root.rglob(marker_dir):
-            if p.is_dir():
-                return p.parent
+    root = _dataset_dir(owner_slug)
+    for p in root.rglob(marker_dir):
+        if p.is_dir():
+            return p.parent
     raise FileNotFoundError(
-        f'مالقتش فولدر "{marker_dir}" جوّه أي داتاسِت متوصّل بالنوتبوك — '
-        f'اتأكد إن الداتاسِت المطلوب مضاف في kernel-metadata.json وإنه فعلاً متوصّل')
+        f'مالقتش فولدر "{marker_dir}" جوّه داتاسِت {owner_slug} — '
+        f'اتأكد إنه فعلاً بالبنية المتوقّعة')
 
 
 def _pick_clips(class_dir, n=CLIPS_PER_LABEL):
@@ -142,37 +166,38 @@ def _pick_clips(class_dir, n=CLIPS_PER_LABEL):
     return sorted((p for p in class_dir.iterdir() if p.is_dir()))[:n]
 
 
-def _find_clips_by_suffix(class_keys, suffix_pattern, dataset_hint):
+def _find_clips_by_suffix(class_keys, suffix_pattern, owner_slug):
     """
     بيدوّر على فيديوهات اسمها بينتهي بـ ..._<فئة><suffix_pattern>.<امتداد>
     زي "NTU_fight0003_fall_2.mp4" أو "v_TableTennisShot_g01_c01.avi" —
-    مش هاردكودينج لمسار الفولدر، بندوّر بالاسم لأن مش عارفين تعشيش
-    الفولدرات بالظبط في كل داتاسِت.
+    مش هاردكودينج لمسار الفولدر الداخلي، بندوّر بالاسم لأن مش عارفين
+    تعشيش الفولدرات بالظبط جوه الداتاسِت. لكن **بنمشي جوّه الداتاسِت
+    المطلوب بس** (owner_slug) — مش كل /kaggle/input زي الشكل القديم،
+    عشان ميضطرش يمشي في داتاسِتس تانية ضخمة (Charades 75GB) وهو بيدوّر
+    على حاجة صغيرة في داتاسِت تاني خالص.
     """
     if not ON_KAGGLE:
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
+    root = _dataset_dir(owner_slug)
     pattern = re.compile(
         r'_(' + '|'.join(class_keys) + r')' + suffix_pattern + r'\.(mp4|avi|mov|mkv)$',
         re.IGNORECASE)
     found = {k: [] for k in class_keys}
     all_names_sample = []
-    for root in sorted(Path('/kaggle/input').iterdir()):
-        if not root.is_dir():
+    for p in root.rglob('*'):
+        if not p.is_file():
             continue
-        for p in root.rglob('*'):
-            if not p.is_file():
-                continue
-            if len(all_names_sample) < 20:
-                all_names_sample.append(p.name)
-            m = pattern.search(p.name)
-            if m:
-                found[m.group(1).lower()].append(p)
+        if len(all_names_sample) < 20:
+            all_names_sample.append(p.name)
+        m = pattern.search(p.name)
+        if m:
+            found[m.group(1).lower()].append(p)
 
     missing = [k for k, v in found.items() if not v]
     if missing:
         raise FileNotFoundError(
-            f'مالقتش فيديوهات لـ {missing} — اتأكد إن {dataset_hint} متوصّل بالنوتبوك.\n'
+            f'مالقتش فيديوهات لـ {missing} — اتأكد إن {owner_slug} متوصّل بالنوتبوك.\n'
             f'عينة من أسامي الملفات اللي لقيتها: {all_names_sample}')
     for k in found:
         found[k].sort()
@@ -180,22 +205,32 @@ def _find_clips_by_suffix(class_keys, suffix_pattern, dataset_hint):
 
 
 def _find_charades_root():
-    """بيدوّر على ملف Charades_v1_train.csv وفولدر فريمات الـ rgb جنبه."""
+    """بيدوّر على ملف Charades_v1_train.csv وفولدر فريمات الـ rgb جنبه —
+    جوّه داتاسِت charades بس (75GB)، مش كل /kaggle/input."""
     if not ON_KAGGLE:
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
-    for root in sorted(Path('/kaggle/input').iterdir()):
-        if not root.is_dir():
-            continue
-        csvs = list(root.rglob('Charades_v1_train.csv'))
-        if not csvs:
-            continue
-        csv_path = csvs[0]
-        rgb_dirs = [d for d in root.rglob('*') if d.is_dir() and 'rgb' in d.name.lower()]
-        return csv_path, (rgb_dirs[0] if rgb_dirs else csv_path.parent)
-    raise FileNotFoundError(
-        'مالقتش Charades_v1_train.csv في أي داتاسِت متوصّل — '
-        'اتأكد إن jizeyong/charades مضاف في kernel-metadata.json')
+    root = _dataset_dir('jizeyong/charades')
+    csvs = list(root.rglob('Charades_v1_train.csv'))
+    if not csvs:
+        raise FileNotFoundError(
+            'مالقتش Charades_v1_train.csv جوّه jizeyong/charades — '
+            'اتأكد إنه فعلاً بالبنية المتوقّعة')
+    csv_path = csvs[0]
+
+    # بندوّر على فولدر فريمات الـ rgb، بس من غير ما ننزل جوّه فولدرات
+    # فريمات كل فيديو على حدة (فيه آلاف منها) — أول ما نلاقي فولدر اسمه
+    # فيه 'rgb' منوقف وما بنكملش ننزل جواه.
+    import os
+    rgb_dir = None
+    for dirpath, dirnames, _filenames in os.walk(root):
+        for d in dirnames:
+            if 'rgb' in d.lower():
+                rgb_dir = Path(dirpath) / d
+                break
+        if rgb_dir is not None:
+            break
+    return csv_path, (rgb_dir if rgb_dir is not None else csv_path.parent)
 
 
 def _charades_candidates(csv_path):
@@ -319,7 +354,7 @@ def main():
     manifest += _load_local_templates()
 
     # ── HMDB51 (rawframes) ──
-    root = _find_rawframes_root('clap')
+    root = _find_rawframes_root('clap', 'jizeyong/hmdb51')
     print(f'\n📁 لقيت فولدرات حركات HMDB51 في: {root}')
 
     for hmdb_class, our_label in HMDB_TO_LABEL.items():
@@ -405,7 +440,8 @@ def main():
                   f'{len(kp)} فريم ({time.perf_counter() - t0:.1f}s)')
 
     # ── UCF101 (بينج بونج) ──
-    ucf_clips = _find_clips_by_suffix(UCF101_TO_LABEL, r'_g\d+_c\d+', 'UCF101')
+    ucf_clips = _find_clips_by_suffix(
+        UCF101_TO_LABEL, r'_g\d+_c\d+', 'matthewjansen/ucf101-action-recognition')
     print(f'\n📁 لقيت فيديوهات UCF101 لكل الحركات المطلوبة')
 
     for ucf_class, our_label in UCF101_TO_LABEL.items():
