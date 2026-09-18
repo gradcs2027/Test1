@@ -46,7 +46,7 @@
     wave          →  wave             stand       →  stand_up
     hug           →  hugging          walk        →  walking
     shake_hands   →  hand_shake       run         →  running
-    drink         →  drink_water      lyingdown   →  lying
+    drink         →  drink_water      lying_down  →  lying
     brush_hair    →  brush_hair
 
     Charades      →  حركتنا                       UCF101         →  حركتنا
@@ -91,7 +91,7 @@ CCTV_TO_LABEL = {
     'stand': 'stand_up',
     'walk': 'walking',
     'run': 'running',
-    'lyingdown': 'lying',
+    'lying_down': 'lying',
 }
 
 CHARADES_TO_LABEL = {
