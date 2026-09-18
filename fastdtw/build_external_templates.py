@@ -1,55 +1,71 @@
 """
-قصاصات خارجية لعشر حركات: تصفيق، تلويح، جلوس، قيام، عناق، مصافحة،
-شرب مية، تسريح شعر، مشي، جري — من مصدرين مختلفين حسب طبيعة الحركة.
+قصاصات خارجية للـ18 حركة كلهم (كل الحركات الموجودة في vidtest1-4) —
+حركتين بالظبط لكل حركة، من 5 مصادر حسب طبيعة الحركة.
 
 ليه الملف ده موجود؟
-────────────────────
+────────────────────────
 طلب صريح من صاحب المشروع: templates تجربة "عدد الفريمات" لازم تيجي من
 **بره** فيديوهاتنا (vidtest1-4) — مش من نفس الفيديوهات اللي بنختبر
-عليها، عشان الاختبار يبقى نظيف فعلاً (صفر تسريب، مش بس "نظيف عبر
-الفيديوهات" زي run_crossvideo.py).
+عليها، عشان الاختبار يبقى نظيف فعلاً (صفر تسريب). وطلب كمان إن كل حركة
+تتغطى بالظبط بقصاصتين، مهما احتاج الأمر مصادر داتا مختلفة.
 
-ليه مصدرين؟
+المصادر الخمسة
 ────────────────────
-أول تجربة (HMDB51 لكل الحركات العشرة) طلعت دقة واطية (10-14%) —
-جزء كبير من السبب إن HMDB51 أفلام/يوتيوب بزوايا وقرب كاميرا مختلفة
-تماماً عن فيديوهاتنا (اللي مصوّرة بمنظور كاميرا مراقبة/بعيدة). فحركات
-"الجسم الكامل" (جلوس، قيام، مشي، جري) بقينا نجيبها من داتاسِت **CCTV
-حقيقي** عشان يبقى نفس منظور الكاميرا تقريباً. حركات الإيد/الجزء العلوي
-(تصفيق، تلويح، شرب، تسريح شعر) وكمان العناق/المصافحة سبناهم من HMDB51
-زي ما هما، لأنهم أقل تأثر بمسافة الكاميرا.
+1. **محلي (USER + NTU60)** — مستخرج قبل كده على جهازك بـ
+   build_local_templates.py ومسجّل في git تحت shared/keypoints/external_local/.
+   ده بيغطّي: فيديوهاتك الحقيقية (تصفيق، تلويح، جلوس، وقوف، مكالمة،
+   رش عطر) + لمس الدماغ ولبس النظارة (من NTU60، صيغة سكيلتون جاهزة).
 
-المصدر الأول — HMDB51 (جامعة Brown)، نسخة "rawframes" (فريمات
-مستخرجة مسبقاً كصور) مرفوعة على Kaggle باسم jizeyong/hmdb51 (16.5GB).
-⚠️ المصدر ده رفعه فرد مش الفريق الأصلي، وماعندوش وصف/ترخيص واضح على
-   صفحته. المحتوى نفسه (HMDB51) داتاسِت أكاديمي معروف ومسموح للبحث.
+2. **HMDB51** (جامعة Brown، نسخة "rawframes" مرفوعة على Kaggle باسم
+   jizeyong/hmdb51، 16.5GB) — حركات الإيد/الجزء العلوي، أقل تأثر بمسافة
+   الكاميرا: تصفيق، تلويح، عناق، مصافحة، شرب مية، تسريح شعر.
+   ⚠️ مصدر فردي، ماعندوش وصف/ترخيص واضح، لكن HMDB51 نفسه داتاسِت أكاديمي
+   معروف ومسموح للبحث.
 
-    HMDB51        →  حركتنا عندنا
-    clap          →  clapping
-    wave          →  wave
-    hug           →  hugging
-    shake_hands   →  hand_shake
-    drink         →  drink_water
+3. **CCTV Action Recognition Dataset** (Kaggle، jonathannield/
+   cctv-action-recognition-dataset، 618MB) — قصاصات حقيقية من كاميرات
+   مراقبة فعلية، أقرب لمنظور فيديوهاتنا: جلوس، وقوف، مشي، جري، نوم/استلقاء
+   (فئة "LyingDown" عندهم). أسامي الملفات فيها اسم الحركة، مثال:
+   "NTU_fight0003_fall_2.mp4" (مصدر_اسم_حركة_رقم).
+
+4. **Charades** (معهد Allen AI، نسخة rawframes مرفوعة على Kaggle باسم
+   jizeyong/charades) — فيديوهات ناس بتعمل حركات يومية جوه البيت، كاميرا
+   شبه ثابتة. بيغطّي 3 حركات كانت عالقة: يفتح النور (فئة "Turning on a
+   light")، يصحى من النوم (فئة "awakening")، وقصاصة تانية لمكالمة تليفون
+   (فئة "Talking on a phone"، بالإضافة لفيديوك). الفيديو الواحد فيه أكتر
+   من حركة جوه بعض، فبنقرا ملف الـ annotations (CSV) ونقص بس الفترة
+   الزمنية اللي فيها الحركة المطلوبة (24 فريم/ثانية، معدل استخراج Charades
+   الرسمي).
+
+5. **UCF101** — بيغطّي بينج بونج (فئة "TableTennisShot")، بنفس أسلوب
+   البحث بالاسم اللي في CCTV (v_TableTennisShot_g01_c01.avi، تسمية UCF101
+   الرسمية الثابتة في كل نسخه المرفوعة).
+
+    HMDB51        →  حركتنا           CCTV        →  حركتنا
+    clap          →  clapping         sit         →  sitting
+    wave          →  wave             stand       →  stand_up
+    hug           →  hugging          walk        →  walking
+    shake_hands   →  hand_shake       run         →  running
+    drink         →  drink_water      lyingdown   →  lying
     brush_hair    →  brush_hair
 
-المصدر التاني — CCTV Action Recognition Dataset (Kaggle، jonathannield/
-cctv-action-recognition-dataset، 618MB): قصاصات حقيقية مجمّعة من
-داتاسِتات كاميرات مراقبة فعلية + يوتيوب/جوجل. أسامي الملفات نفسها فيها
-اسم الحركة، مثال: "NTU_fight0003_fall_2.mp4" (مصدر_اسم_حركة_رقم).
+    Charades      →  حركتنا                       UCF101         →  حركتنا
+    c019          →  phone_call                   tabletennisshot → play_pingpong
+    c104          →  turn_on_light
+    c133 / c146   →  wake_up
 
-    CCTV          →  حركتنا عندنا
-    sit           →  sitting      (وده كمان اللي بيتقاس عليه sit_down)
-    stand         →  stand_up
-    walk          →  walking
-    run           →  running
+2 قصاصة بالظبط لكل حركة في النهاية (_cap_per_label). لو حركة عندها أكتر
+من مصدر (زي phone_call: فيديوك + Charades)، بنفضّل فيديوك/NTU60 الأول
+لأنهم حقيقيين ليك أو من داتاسِت مضبوط الفورمات مسبقاً، وبعدين نكمّل من
+باقي المصادر بالترتيب اللي جوه main().
 
-3 قصاصات لكل حركة من كل مصدر (أول 3 بالترتيب الأبجدي — ثابتة وقابلة
-للتكرار، مش عشوائية).
-
-الاستخدام (على Kaggle بس، بعد ما jizeyong/hmdb51 و
-jonathannield/cctv-action-recognition-dataset يتوصّلوا):
+الاستخدام (على Kaggle، بعد ما build_local_templates.py يتشغّل محلياً
+واتعمله commit، وبعد ما jizeyong/hmdb51، jonathannield/
+cctv-action-recognition-dataset، jizeyong/charades، وداتاسِت UCF101
+يتوصّلوا):
     python build_external_templates.py
 """
+import csv
 import re
 import sys
 import time
@@ -59,7 +75,7 @@ import cv2
 import numpy as np
 
 import _bootstrap  # noqa: F401
-from paths import KP_OUT, ON_KAGGLE
+from paths import KP_OUT, ON_KAGGLE, ROOT
 
 HMDB_TO_LABEL = {
     'clap': 'clapping',
@@ -75,33 +91,50 @@ CCTV_TO_LABEL = {
     'stand': 'stand_up',
     'walk': 'walking',
     'run': 'running',
+    'lyingdown': 'lying',
 }
 
-CLIPS_PER_LABEL = 3
+CHARADES_TO_LABEL = {
+    'c019': 'phone_call',      # Talking on a phone/camera
+    'c104': 'turn_on_light',   # Turning on a light
+    'c133': 'wake_up',         # Someone is awakening in bed
+    'c146': 'wake_up',         # Someone is awakening somewhere
+}
+CHARADES_FPS = 24.0   # معدل استخراج فريمات Charades RGB الرسمي
+
+UCF101_TO_LABEL = {
+    'tabletennisshot': 'play_pingpong',
+}
+
+# ترتيب الأفضلية لما حركة توصلها قصاصات أكتر من CLIPS_PER_LABEL —
+# المحلي (فيديوهاتك/NTU60) بييجي الأول، وبعدين المصادر الخارجية.
+_SOURCE_PRIORITY = {'USER': 0, 'NTU60': 1, 'HMDB51': 2, 'CCTV': 2, 'CHARADES': 3, 'UCF101': 3}
+
+CLIPS_PER_LABEL = 2
 EXT_DIR = KP_OUT / 'external'
+LOCAL_EXT_DIR = ROOT / 'shared' / 'keypoints' / 'external_local'
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 
-def _find_rawframes_root():
+def _find_rawframes_root(marker_dir):
     """
-    بيدوّر على الفولدر اللي جواه فولدرات الحركات (clap/, wave/, ...).
+    بيدوّر على الفولدر اللي جواه فولدرات الحركات (marker_dir بيتأكد بيه).
 
     مش هاردكودينج للمسار عشان Kaggle بيحط اسم الداتاسِت في المسار،
-    وممكن يبقى فيه تعشيش زيادة (rawframes/rawframes/...) زي ما شفنا
-    في متصفّح الداتاسِت. بندوّر بالاسم مش بعدد المستويات.
+    وممكن يبقى فيه تعشيش زيادة. بندوّر بالاسم مش بعدد المستويات.
     """
     if not ON_KAGGLE:
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
     for root in sorted(Path('/kaggle/input').iterdir()):
-        for p in root.rglob('clap'):
+        for p in root.rglob(marker_dir):
             if p.is_dir():
                 return p.parent
     raise FileNotFoundError(
-        'مالقتش فولدر "clap" جوّه أي داتاسِت متوصّل بالنوتبوك — '
-        'اتأكد إن jizeyong/hmdb51 مضاف في kernel-metadata.json وإنه فعلاً متوصّل')
+        f'مالقتش فولدر "{marker_dir}" جوّه أي داتاسِت متوصّل بالنوتبوك — '
+        f'اتأكد إن الداتاسِت المطلوب مضاف في kernel-metadata.json وإنه فعلاً متوصّل')
 
 
 def _pick_clips(class_dir, n=CLIPS_PER_LABEL):
@@ -109,18 +142,20 @@ def _pick_clips(class_dir, n=CLIPS_PER_LABEL):
     return sorted((p for p in class_dir.iterdir() if p.is_dir()))[:n]
 
 
-def _find_cctv_clips():
+def _find_clips_by_suffix(class_keys, suffix_pattern, dataset_hint):
     """
-    بيدوّر على فيديوهات CCTV اللي اسمها بينتهي بـ ..._<حركة>_<رقم>.<امتداد>
-    زي "NTU_fight0003_fall_2.mp4" — مش هاردكودينج لمسار الفولدر، بندوّر
-    بالاسم زي _find_rawframes_root، عشان مش عارفين تعشيش الفولدرات بالظبط.
+    بيدوّر على فيديوهات اسمها بينتهي بـ ..._<فئة><suffix_pattern>.<امتداد>
+    زي "NTU_fight0003_fall_2.mp4" أو "v_TableTennisShot_g01_c01.avi" —
+    مش هاردكودينج لمسار الفولدر، بندوّر بالاسم لأن مش عارفين تعشيش
+    الفولدرات بالظبط في كل داتاسِت.
     """
     if not ON_KAGGLE:
         raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
 
     pattern = re.compile(
-        r'_(' + '|'.join(CCTV_TO_LABEL) + r')_\d+\.(mp4|avi|mov|mkv)$', re.IGNORECASE)
-    found = {k: [] for k in CCTV_TO_LABEL}
+        r'_(' + '|'.join(class_keys) + r')' + suffix_pattern + r'\.(mp4|avi|mov|mkv)$',
+        re.IGNORECASE)
+    found = {k: [] for k in class_keys}
     all_names_sample = []
     for root in sorted(Path('/kaggle/input').iterdir()):
         if not root.is_dir():
@@ -137,37 +172,93 @@ def _find_cctv_clips():
     missing = [k for k, v in found.items() if not v]
     if missing:
         raise FileNotFoundError(
-            f'مالقتش فيديوهات لـ {missing} — اتأكد إن '
-            f'jonathannield/cctv-action-recognition-dataset متوصّل بالنوتبوك.\n'
+            f'مالقتش فيديوهات لـ {missing} — اتأكد إن {dataset_hint} متوصّل بالنوتبوك.\n'
             f'عينة من أسامي الملفات اللي لقيتها: {all_names_sample}')
+    for k in found:
+        found[k].sort()
     return found
 
 
-def _extract_from_frames(frame_dir, model):
-    """(frames, 17, 2) من فولدر صور مرتّبة — نفس منطق pose_extract.py
-    بس بيقرا من ملفات صور جاهزة مش من فيديو."""
-    frame_files = sorted(frame_dir.glob('*.jpg'))
+def _find_charades_root():
+    """بيدوّر على ملف Charades_v1_train.csv وفولدر فريمات الـ rgb جنبه."""
+    if not ON_KAGGLE:
+        raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
+
+    for root in sorted(Path('/kaggle/input').iterdir()):
+        if not root.is_dir():
+            continue
+        csvs = list(root.rglob('Charades_v1_train.csv'))
+        if not csvs:
+            continue
+        csv_path = csvs[0]
+        rgb_dirs = [d for d in root.rglob('*') if d.is_dir() and 'rgb' in d.name.lower()]
+        return csv_path, (rgb_dirs[0] if rgb_dirs else csv_path.parent)
+    raise FileNotFoundError(
+        'مالقتش Charades_v1_train.csv في أي داتاسِت متوصّل — '
+        'اتأكد إن jizeyong/charades مضاف في kernel-metadata.json')
+
+
+def _charades_candidates(csv_path):
+    """بيرجّع dict: كود الحركة -> [(video_id, start, end), ...] بترتيب ثابت."""
+    found = {code: [] for code in CHARADES_TO_LABEL}
+    with open(csv_path, encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            actions = (row.get('actions') or '').strip()
+            if not actions:
+                continue
+            for triplet in actions.split(';'):
+                parts = triplet.split()
+                if len(parts) != 3:
+                    continue
+                code, start, end = parts
+                if code in found:
+                    found[code].append((row['id'], float(start), float(end)))
+    for code in found:
+        found[code].sort()
+    return found
+
+
+def _pose_from_bgr(frame, model):
+    """(17, 2) أو None — نفس منطق اختيار أكبر صندوق شخص في كل مكان بالملف."""
+    res = model(frame, verbose=False)[0]
+    if res.keypoints is not None and len(res.keypoints) > 0:
+        if res.boxes is not None and len(res.boxes) > 1:
+            areas = (res.boxes.xywh[:, 2] * res.boxes.xywh[:, 3]).cpu().numpy()
+            person = int(np.argmax(areas))
+        else:
+            person = 0
+        cand = res.keypoints.xy[person].cpu().numpy()
+        if cand.shape == (17, 2) and np.any(cand != 0):
+            return cand
+    return None
+
+
+def _extract_frame_files(frame_files, model):
+    """(frames, 17, 2) من قايمة ملفات صور بترتيب معيّن."""
     keypoints = []
     for f in frame_files:
         frame = cv2.imread(str(f))
         if frame is None:
             continue
-
-        res = model(frame, verbose=False)[0]
-        kp = None
-        if res.keypoints is not None and len(res.keypoints) > 0:
-            if res.boxes is not None and len(res.boxes) > 1:
-                areas = (res.boxes.xywh[:, 2] * res.boxes.xywh[:, 3]).cpu().numpy()
-                person = int(np.argmax(areas))
-            else:
-                person = 0
-            cand = res.keypoints.xy[person].cpu().numpy()
-            if cand.shape == (17, 2) and np.any(cand != 0):
-                kp = cand
-
+        kp = _pose_from_bgr(frame, model)
         keypoints.append(kp if kp is not None else np.zeros((17, 2), dtype=np.float32))
-
     return np.array(keypoints, dtype=np.float32)
+
+
+def _extract_from_frames(frame_dir, model):
+    """(frames, 17, 2) من فولدر صور مرتّبة كامل."""
+    return _extract_frame_files(sorted(frame_dir.glob('*.jpg')), model)
+
+
+def _extract_charades_clip(rgb_dir, video_id, start, end, model):
+    """بيقص فريمات الفترة [start, end] بس من فولدر فريمات الفيديو الكامل."""
+    frame_dir = rgb_dir / video_id
+    frame_files = sorted(frame_dir.glob('*.jpg'))
+    if not frame_files:
+        return np.zeros((0, 17, 2), dtype=np.float32)
+    lo = max(0, int(round(start * CHARADES_FPS)))
+    hi = min(len(frame_files), int(round(end * CHARADES_FPS)) + 1)
+    return _extract_frame_files(frame_files[lo:hi], model)
 
 
 def _extract_from_video(video_path, model):
@@ -178,23 +269,41 @@ def _extract_from_video(video_path, model):
         ok, frame = cap.read()
         if not ok:
             break
-
-        res = model(frame, verbose=False)[0]
-        kp = None
-        if res.keypoints is not None and len(res.keypoints) > 0:
-            if res.boxes is not None and len(res.boxes) > 1:
-                areas = (res.boxes.xywh[:, 2] * res.boxes.xywh[:, 3]).cpu().numpy()
-                person = int(np.argmax(areas))
-            else:
-                person = 0
-            cand = res.keypoints.xy[person].cpu().numpy()
-            if cand.shape == (17, 2) and np.any(cand != 0):
-                kp = cand
-
+        kp = _pose_from_bgr(frame, model)
         keypoints.append(kp if kp is not None else np.zeros((17, 2), dtype=np.float32))
-
     cap.release()
     return np.array(keypoints, dtype=np.float32)
+
+
+def _cap_per_label(manifest, cap=CLIPS_PER_LABEL):
+    """بيقص كل حركة لـ cap قصاصة بالظبط، مفضّل المصادر الأعلى أفضلية."""
+    by_label = {}
+    for m in manifest:
+        by_label.setdefault(m['label'], []).append(m)
+    out = []
+    for items in by_label.values():
+        items.sort(key=lambda m: _SOURCE_PRIORITY.get(m['source'], 9))
+        out.extend(items[:cap])
+    return out
+
+
+def _load_local_templates():
+    """قصاصاتك + NTU60 — اتستخرجوا قبل كده محلياً بـ build_local_templates.py
+    ومسجّلين في git، هنا بس بننسخهم لفولدر الإخراج الحالي."""
+    manifest_path = LOCAL_EXT_DIR / 'manifest_local.npy'
+    if not manifest_path.exists():
+        print(f'⚠️ مفيش قصاصات محلية في {LOCAL_EXT_DIR} — تخطّي '
+              f'(شغّل build_local_templates.py محلياً الأول لو ده مش مقصود)')
+        return []
+
+    local_manifest = np.load(manifest_path, allow_pickle=True)
+    out = []
+    for m in local_manifest:
+        kp = np.load(LOCAL_EXT_DIR / m['file'])
+        np.save(EXT_DIR / m['file'], kp)
+        out.append(dict(m))
+    print(f'📦 قصاصات محلية: {len(out)}')
+    return out
 
 
 def main():
@@ -206,9 +315,12 @@ def main():
 
     manifest = []
 
-    # ── المصدر الأول: HMDB51 (rawframes) ──
-    root = _find_rawframes_root()
-    print(f'📁 لقيت فولدرات حركات HMDB51 في: {root}')
+    # ── مصدر محلي: فيديوهاتك + NTU60 ──
+    manifest += _load_local_templates()
+
+    # ── HMDB51 (rawframes) ──
+    root = _find_rawframes_root('clap')
+    print(f'\n📁 لقيت فولدرات حركات HMDB51 في: {root}')
 
     for hmdb_class, our_label in HMDB_TO_LABEL.items():
         class_dir = root / hmdb_class
@@ -226,24 +338,22 @@ def main():
                 print(f'   ✗ {clip_dir.name}: فريمات قليلة قوي ({len(kp)}) — اتخطّى')
                 continue
 
-            out_name = f'{our_label}_{i}.npy'
+            out_name = f'{our_label}_hmdb{i}.npy'
             np.save(EXT_DIR / out_name, kp)
             manifest.append({
-                'label': our_label,
-                'source': 'HMDB51',
-                'clip': clip_dir.name,
-                'file': out_name,
-                'n_frames': int(len(kp)),
+                'label': our_label, 'source': 'HMDB51', 'clip': clip_dir.name,
+                'file': out_name, 'n_frames': int(len(kp)),
             })
             print(f'   ✓ {clip_dir.name}: {len(kp)} فريم '
                   f'({time.perf_counter() - t0:.1f}s)')
 
-    # ── المصدر التاني: CCTV Action Recognition Dataset (فيديوهات حقيقية) ──
-    cctv_clips = _find_cctv_clips()
+    # ── CCTV Action Recognition Dataset (فيديوهات حقيقية) ──
+    cctv_clips = _find_clips_by_suffix(
+        CCTV_TO_LABEL, r'_\d+', 'jonathannield/cctv-action-recognition-dataset')
     print(f'\n📁 لقيت فيديوهات CCTV لكل الحركات المطلوبة')
 
     for cctv_class, our_label in CCTV_TO_LABEL.items():
-        clips = sorted(cctv_clips[cctv_class])[:CLIPS_PER_LABEL]
+        clips = cctv_clips[cctv_class][:CLIPS_PER_LABEL]
         print(f'\n🎬 [CCTV] {cctv_class} → {our_label}: {len(clips)} قصاصة مختارة')
 
         for i, clip_path in enumerate(clips):
@@ -253,20 +363,84 @@ def main():
                 print(f'   ✗ {clip_path.name}: فريمات قليلة قوي ({len(kp)}) — اتخطّى')
                 continue
 
-            out_name = f'{our_label}_{i}.npy'
+            out_name = f'{our_label}_cctv{i}.npy'
             np.save(EXT_DIR / out_name, kp)
             manifest.append({
-                'label': our_label,
-                'source': 'CCTV',
-                'clip': clip_path.name,
-                'file': out_name,
-                'n_frames': int(len(kp)),
+                'label': our_label, 'source': 'CCTV', 'clip': clip_path.name,
+                'file': out_name, 'n_frames': int(len(kp)),
             })
             print(f'   ✓ {clip_path.name}: {len(kp)} فريم '
                   f'({time.perf_counter() - t0:.1f}s)')
 
+    # ── Charades (rawframes + قص بالـ annotations) ──
+    csv_path, rgb_dir = _find_charades_root()
+    print(f'\n📁 لقيت Charades: {csv_path.name} + فريمات في {rgb_dir}')
+    charades_candidates = _charades_candidates(csv_path)
+
+    # فئتين كود بيتقاسوا نفس حركتنا (wake_up) — بنجمعهم قبل ما نقص لـ CLIPS_PER_LABEL
+    by_our_label = {}
+    for code, our_label in CHARADES_TO_LABEL.items():
+        by_our_label.setdefault(our_label, []).extend(
+            (code, vid, s, e) for vid, s, e in charades_candidates[code])
+
+    for our_label, cands in by_our_label.items():
+        cands = cands[:CLIPS_PER_LABEL]
+        print(f'\n🎬 [Charades] → {our_label}: {len(cands)} قصاصة مختارة')
+
+        for i, (code, video_id, start, end) in enumerate(cands):
+            t0 = time.perf_counter()
+            kp = _extract_charades_clip(rgb_dir, video_id, start, end, model)
+            if len(kp) < 4:
+                print(f'   ✗ {video_id} ({code}): فريمات قليلة قوي ({len(kp)}) — اتخطّى')
+                continue
+
+            out_name = f'{our_label}_charades{i}.npy'
+            np.save(EXT_DIR / out_name, kp)
+            manifest.append({
+                'label': our_label, 'source': 'CHARADES',
+                'clip': f'{video_id}_{code}_{start:.1f}-{end:.1f}',
+                'file': out_name, 'n_frames': int(len(kp)),
+            })
+            print(f'   ✓ {video_id} ({code}, {start:.1f}s-{end:.1f}s): '
+                  f'{len(kp)} فريم ({time.perf_counter() - t0:.1f}s)')
+
+    # ── UCF101 (بينج بونج) ──
+    ucf_clips = _find_clips_by_suffix(UCF101_TO_LABEL, r'_g\d+_c\d+', 'UCF101')
+    print(f'\n📁 لقيت فيديوهات UCF101 لكل الحركات المطلوبة')
+
+    for ucf_class, our_label in UCF101_TO_LABEL.items():
+        clips = ucf_clips[ucf_class][:CLIPS_PER_LABEL]
+        print(f'\n🎬 [UCF101] {ucf_class} → {our_label}: {len(clips)} قصاصة مختارة')
+
+        for i, clip_path in enumerate(clips):
+            t0 = time.perf_counter()
+            kp = _extract_from_video(clip_path, model)
+            if len(kp) < 4:
+                print(f'   ✗ {clip_path.name}: فريمات قليلة قوي ({len(kp)}) — اتخطّى')
+                continue
+
+            out_name = f'{our_label}_ucf{i}.npy'
+            np.save(EXT_DIR / out_name, kp)
+            manifest.append({
+                'label': our_label, 'source': 'UCF101', 'clip': clip_path.name,
+                'file': out_name, 'n_frames': int(len(kp)),
+            })
+            print(f'   ✓ {clip_path.name}: {len(kp)} فريم '
+                  f'({time.perf_counter() - t0:.1f}s)')
+
+    manifest = _cap_per_label(manifest, CLIPS_PER_LABEL)
     np.save(EXT_DIR / 'manifest.npy', manifest, allow_pickle=True)
-    print(f'\n✅ خلص — {len(manifest)} قصاصة خارجية في {EXT_DIR}')
+
+    by_label_final = {}
+    for m in manifest:
+        by_label_final.setdefault(m['label'], 0)
+        by_label_final[m['label']] += 1
+    short = {l: n for l, n in by_label_final.items() if n < CLIPS_PER_LABEL}
+
+    print(f'\n✅ خلص — {len(manifest)} قصاصة خارجية في {EXT_DIR} '
+          f'({len(by_label_final)} حركة)')
+    if short:
+        print(f'⚠️ حركات ناقصة قصاصات ({CLIPS_PER_LABEL} مطلوبين): {short}')
 
 
 if __name__ == '__main__':

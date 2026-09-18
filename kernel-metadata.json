@@ -13,7 +13,9 @@
   "dataset_sources": [
     "abdallahhsamir/testvid",
     "jizeyong/hmdb51",
-    "jonathannield/cctv-action-recognition-dataset"
+    "jonathannield/cctv-action-recognition-dataset",
+    "jizeyong/charades",
+    "matthewjansen/ucf101-action-recognition"
   ],
   "kernel_sources": [],
   "competition_sources": [],

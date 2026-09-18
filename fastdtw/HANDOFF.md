@@ -122,6 +122,9 @@ truth اتغيّر، شغّل السكريبت تاني قبل ما تنقل ا�
 | `demo_oneshot.py` | 344 | شرح خطوة بخطوة، فيديو واحد -> فيديو واحد + رسم |
 | `cell_fastdtw_ntu.py` | 302 | ⬜ خلية نوتبوك — FastDTW **بالاعتماد على NTU** |
 | `render_pred.py` | 200 | يرسم **التوقّعات** على الفيديو |
+| `build_external_templates.py` | — | يبني بنك القصاصات لـ 18 حركة من 5 مصادر (محلي+NTU60/HMDB51/CCTV/Charades/UCF101)، قصاصتين لكل لابل — يشتغل على Kaggle |
+| `build_local_templates.py` | — | يستخرج قصاصات المستخدم الستة + NTU60 (touch_head/wear_glasses) **محلياً بس**، والنتيجة بتتسجل في git عشان `build_external_templates.py` ياخدها |
+| `experiment_frame_scales.py` | — | تجربة 10/20/30 فريم + معايرة z، بتستخدم بنك الـ 18 حركة |
 
 ### الأسامي اتغيّرت 2026-09-01
 
@@ -192,4 +195,10 @@ sit_down يتحسّن" مبني على سوء فهم.
 ☐ 1. شغّل cell_fastdtw_ntu.py (مسار NTU) على التلات فيديوهات
 ☐ 2. الجدول النهائي: FastDTW مقابل LSTM مقابل $1
 ☐ 3. توقيتات vidtest4 -> يبقى فيه رقم دقة لـ run_vidtest4.py
+☐ 4. commit/push لتعديلات 2026-09-18 (18 حركة/5 مصادر) — محتاج موافقة
+     المستخدم الأول (تفاصيل في ../.wolf/memory.md)
+☐ 5. على Kaggle: ضيف داتاسِت jizeyong/charades و
+     matthewjansen/ucf101-action-recognition (زي HMDB51/CCTV)، وشغّل
+     build_external_templates.py قبل experiment_frame_scales.py
+☐ 6. spray_perfume لسه ناقصه قصاصة تانية — مفيش مصدر مطابق لقيناه
 ```
