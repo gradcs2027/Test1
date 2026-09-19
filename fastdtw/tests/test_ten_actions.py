@@ -94,6 +94,63 @@ def check_leak_guard(actions):
     return False
 
 
+def check_amp_modes(kp):
+    """تطبيع السعة: كل وضع بيعمل اللي مكتوب عليه بالظبط؟
+
+    أهم فحص هنا هو **عدم التأثر بالسعة**: لو ضربنا الحركة في 3 وزوّدنا
+    إزاحة ثابتة، `ناقص الوسط ÷ السعة` لازم يطلّع نفس الأرقام. ده بالظبط
+    اللي بيمنع قالب حركته صغيرة إنه يبقى أقرب حاجة لكل حاجة.
+    """
+    problems = []
+    joints = eta.JOINT_SETS['الجسم كله (17)']
+    raw = eta.pose_features(kp, joints, 'خام')
+
+    centered = eta.pose_features(kp, joints, 'ناقص الوسط')
+    if not np.allclose(centered.mean(axis=0), 0, atol=1e-9):
+        problems.append('"ناقص الوسط" سايب وسط مش صفر')
+
+    shape = eta.pose_features(kp, joints, 'ناقص الوسط ÷ السعة')
+    amp = np.sqrt((shape ** 2).sum(axis=1).mean())
+    if not np.isclose(amp, 1.0, atol=1e-6):
+        problems.append(f'"÷ السعة" المفروض سعته 1 وطلعت {amp:.4f}')
+
+    louder = eta.AMP_MODES['ناقص الوسط ÷ السعة'](raw * 3.0 + 7.0)
+    if not np.allclose(louder, shape, atol=1e-6):
+        problems.append('نفس الحركة بسعة مختلفة طلّعت أرقام مختلفة — '
+                        'التطبيع مش شايل السعة')
+
+    quiet = eta.AMP_MODES['ناقص الوسط ÷ السعة'](np.zeros_like(raw))
+    if not np.isfinite(quiet).all():
+        problems.append('قصاصة ساكنة تماماً طلّعت NaN أو لانهاية')
+
+    return problems
+
+
+def check_mirror(kp):
+    """القلب يمين/شمال: قلبتين لازم يرجّعوا الأصل، وقلبة واحدة لازم
+    تغيّر فعلاً (مش تبقى بلا فايدة)."""
+    problems = []
+    once = eta.mirror_kp(kp)
+    twice = eta.mirror_kp(once)
+
+    if not np.array_equal(twice, np.asarray(kp)):
+        problems.append('قلبتين مارجّعوش الأصل')
+
+    if np.array_equal(once, np.asarray(kp)):
+        problems.append('القلب مغيّرش حاجة خالص')
+
+    if not np.isclose(eta.detect_rate(once), eta.detect_rate(kp)):
+        problems.append('القلب غيّر نسبة الكشف — يعني ضيّع مفاصل')
+
+    joints = eta.JOINT_SETS['الجسم كله (17)']
+    if np.allclose(eta.pose_features(once, joints),
+                   eta.pose_features(kp, joints)):
+        problems.append('التمثيل المقلوب مطابق للأصلي — القالب الزيادة '
+                        'مش بيضيف أي تغطية')
+
+    return problems
+
+
 def check_source_parser():
     """تفكيك أسامي HMDB51 للوصول لعنوان الفيديو الأصلي."""
     cases = [
@@ -176,13 +233,44 @@ def main():
 
     # التمثيل نفسه: الشكل والأرقام
     kp = np.load(CACHE / f'{sorted(actions)[0]}_00.npy')
-    feat = eta.pose_features(kp)
-    ok = feat.shape == (eta.N_FRAMES, len(eta.UPPER) * 2) and np.isfinite(feat).all()
-    print(f'  {"✓" if ok else "✗"} pose_features بيطلّع {feat.shape} '
-          f'من غير NaN')
+    bad = []
+    for jname, joints in eta.JOINT_SETS.items():
+        for aname in eta.AMP_MODES:
+            f = eta.pose_features(kp, joints, aname)
+            if f.shape != (eta.N_FRAMES, len(joints) * 2) or not np.isfinite(f).all():
+                bad.append(f'{jname} | {aname} → {f.shape}')
+    n_variants = len(eta.JOINT_SETS) * len(eta.AMP_MODES)
+    ok = not bad
+    print(f'  {"✓" if ok else "✗"} pose_features بيطلّع الشكل الصح من غير NaN '
+          f'لكل الـ{n_variants} تمثيل')
+    for p in bad:
+        print(f'      {p}')
     fails += [] if ok else ['شكل التمثيل غلط']
 
+    bad = check_amp_modes(kp)
+    ok = not bad
+    print(f'  {"✓" if ok else "✗"} تطبيع السعة بيعمل اللي المفروض يعمله')
+    for p in bad:
+        print(f'      {p}')
+    fails += [] if ok else ['تطبيع السعة غلط']
+
+    bad = check_mirror(kp)
+    ok = not bad
+    print(f'  {"✓" if ok else "✗"} القلب يمين/شمال سليم (قلبتين = الأصل)')
+    for p in bad:
+        print(f'      {p}')
+    fails += [] if ok else ['القلب غلط']
+
+    # النتيجة المحفوظة لازم تقول اتحسبت بأنهي احتمال، وإلا الرقم مش
+    # قابل لإعادة الإنتاج
+    n_expected = n_variants * 2          # × معكوس / مش معكوس
+    ok = len(res.get('by_variant', {})) == n_expected and bool(res.get('variant'))
+    print(f'  {"✓" if ok else "✗"} النتيجة بتسجّل دقة كل الـ{n_expected} احتمال '
+          f'والفايز فيهم ({res.get("variant")})')
+    fails += [] if ok else ['الاحتمالات مش متسجّلة']
+
     # مقارنة القصاصة بنفسها لازم تدّي صفر
+    feat = eta.pose_features(kp, res['joints'], res['amp'])
     d = eta.norm_distance(feat, feat, radius=eta.RADIUS)
     ok = d < 1e-9
     print(f'  {"✓" if ok else "✗"} مسافة القصاصة عن نفسها = {d:.2e}')
