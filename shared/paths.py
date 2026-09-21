@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent      # shared/
-ROOT = HERE.parent                          # kaggle_nb_520b8d324a/
+ROOT = HERE.parent                          # جذر الريبو
 
 # ==============================================================================
 # اكتشاف البيئة

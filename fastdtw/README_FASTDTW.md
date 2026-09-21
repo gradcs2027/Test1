@@ -34,8 +34,8 @@ python fastdtw/run_crossvideo.py
 ### على Kaggle
 
 ```python
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
 !python fastdtw/run_crossvideo.py
 # النتيجة: 41.7%
 ```

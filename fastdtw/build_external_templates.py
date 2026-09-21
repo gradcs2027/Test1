@@ -66,6 +66,7 @@ cctv-action-recognition-dataset، jizeyong/charades، وداتاسِت UCF101
     python build_external_templates.py
 """
 import csv
+import os
 import re
 import sys
 import time
@@ -115,7 +116,33 @@ EXT_DIR = KP_OUT / 'external'
 LOCAL_EXT_DIR = ROOT / 'shared' / 'keypoints' / 'external_local'
 
 # متغيّر عشان اختبارات المسارات تقدر تحطّ شجرة مزيّفة بدله من غير Kaggle
-KAGGLE_INPUT = Path('/kaggle/input')
+#
+# على Kaggle الداتاسِتس بتتوصّل في /kaggle/input. محلياً بنقراها من فولدر
+# `datasets/` اللي جنب فولدر المشروع (بره الريبو عمداً — الداتا مش بتتسجّل
+# في git). الأسامي جوّاه **لازم** تبقى نفس الـslug بتاع Kaggle، لأن
+# _dataset_dir بيدوّر بالـslug: `datasets/hmdb51`، `datasets/charades`،
+# `datasets/ucf101`، `datasets/cctv-action-recognition-dataset`.
+# ده بيخلّي نفس الكود يشتغل في المكانين من غير أي تفريع.
+KAGGLE_INPUT = Path(os.environ.get(
+    'DATASETS_DIR',
+    '/kaggle/input' if ON_KAGGLE else ROOT.parent / 'datasets'))
+
+
+def _require_datasets_root():
+    """
+    بتقع بصوت عالي لو فولدر الداتاسِتس نفسه مش موجود.
+
+    ⚠️ الدالة دي واخدة مكان `if not ON_KAGGLE: raise RuntimeError(...)` اللي
+       كان مكرّر في تلات دوال. الشرط القديم كان بيمنع التشغيل المحلي **حتى
+       لو الداتا موجودة على الجهاز**، لأنه كان بيسأل "إحنا فين؟" بدل ما
+       يسأل "الداتا موجودة؟" — والسؤال التاني هو اللي بيهم فعلاً.
+    """
+    if not KAGGLE_INPUT.is_dir():
+        raise FileNotFoundError(
+            f'مالقتش فولدر الداتاسِتس: {KAGGLE_INPUT}\n'
+            f'  على Kaggle: اتأكد إن الداتاسِتس متوصّلة بالنوتبوك\n'
+            f'  محلياً    : نزّلهم جوّه الفولدر ده بأسامي الـslug بتاعتهم،\n'
+            f'              أو حدّد مكانهم بـ DATASETS_DIR=<مسار>')
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -152,8 +179,7 @@ def _dataset_dir(owner_slug):
 def _find_rawframes_root(marker_dir, owner_slug):
     """بيدوّر على الفولدر اللي جواه فولدرات الحركات (marker_dir بيتأكد
     بيه) **جوّه داتاسِت واحد بس** — مش كل /kaggle/input."""
-    if not ON_KAGGLE:
-        raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
+    _require_datasets_root()
 
     root = _dataset_dir(owner_slug)
     for p in root.rglob(marker_dir):
@@ -179,8 +205,7 @@ def _find_clips_by_suffix(class_keys, suffix_pattern, owner_slug):
     عشان ميضطرش يمشي في داتاسِتس تانية ضخمة (Charades 75GB) وهو بيدوّر
     على حاجة صغيرة في داتاسِت تاني خالص.
     """
-    if not ON_KAGGLE:
-        raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
+    _require_datasets_root()
 
     root = _dataset_dir(owner_slug)
     pattern = re.compile(
@@ -210,8 +235,7 @@ def _find_clips_by_suffix(class_keys, suffix_pattern, owner_slug):
 def _find_charades_root():
     """بيدوّر على ملف Charades_v1_train.csv وفولدر فريمات الـ rgb جنبه —
     جوّه داتاسِت charades بس (75GB)، مش كل /kaggle/input."""
-    if not ON_KAGGLE:
-        raise RuntimeError('لازم تشغّل الملف ده على Kaggle — محتاج الداتاسِت المرفوع')
+    _require_datasets_root()
 
     root = _dataset_dir('jizeyong/charades')
     # ⚠️ next(..., None) لازم مش list(...): rglob() بترجع generator، ولو

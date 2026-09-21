@@ -3,16 +3,24 @@
 انسخ ده في خلية واحدة في أي نوتبوك على Kaggle وشغّلها.
 
 ```python
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
+!git log --oneline -1
 !python shared/paths.py
 ```
 
-⚠️ **الـ `-b` مش اختياري.** الشغل ده على فرع `crossvideo-and-gt-unification`،
-و `main` لسه 6 commits وراه ومافيهاش `paths.py` ولا `run_vidtest4.py`.
-من غير الـ `-b` هتاخد `main` وهتقع بـ `ModuleNotFoundError`.
+⚠️ **الـ `-b` مش اختياري.** الشغل الحالي على فرع
+`hmdb51-frame-scale-experiment`، و `main` وراه بكتير. من غير الـ `-b` هتاخد
+`main` وهتقع بـ `ModuleNotFoundError` أو هتلاقي ملفات ناقصة.
 
-(لما الفرع يتدمج في `main`، شيل الـ `-b` من السطر ده.)
+⚠️ **اسم الفرع ده بيتغيّر مع الشغل.** لو الشغل اتنقل لفرع جديد، غيّر الاسم
+في السطر اللي فوق. سطر `git log --oneline -1` موجود عشان كده بالظبط: لو
+آخر commit مش اللي انت مستنيه، يبقى انت على فرع قديم. (استنساخ فرع ملغي
+بيقع بصوت عالي `Remote branch not found`، لكن استنساخ فرع **قديم موجود**
+بينجح بالسكوت — ده اللي بيضيّع الوقت.)
+
+⚠️ **الجلسة لما تعمل ريستارت، `/kaggle/working` بيتمسح بالكامل** — الريبو
+وكل المخرجات والكاش بيروحوا. لازم تعيد الخلية دي من الأول.
 
 لازم تشوف `الفيديوهات المتاحة (4)`. لو شفت `(0)` اقرا `KP_DIR` اللي طبعه —
 هو ده المكان اللي دوّر فيه.
@@ -35,10 +43,12 @@
 
 ---
 
-## مش محتاج: pip install، ولا داتاسِت، ولا GPU
+## مسار التصنيف: مش محتاج pip install، ولا داتاسِت، ولا GPU
 
-**مافيش حاجة تتثبّت.** `fastdtw_core.py` تطبيق محلي في الريبو، مش حزمة pip.
-مسار الـ few-shot كله معتمد على **numpy بس**.
+**مافيش حاجة تتثبّت** للتصنيف. `fastdtw_core.py` تطبيق محلي في الريبو، مش
+حزمة pip. مسار الـ few-shot كله معتمد على **numpy بس**.
+
+(ده بيخصّ التصنيف بس. استخراج الـ pose محتاج تثبيت — تحت.)
 
 **مافيش داتاسِت.** التصنيف بيشتغل على الـ keypoints (828 KB، متسجّلة في git
 فبتيجي مع الـ clone) مش على ملفات الـ mp4.
@@ -52,7 +62,20 @@
 !python fastdtw/render_pred.py            # رسم التوقّعات على الفيديو
 ```
 
-دول محتاجين كمان `ultralytics` و `opencv`، وموجودين على Kaggle أصلاً.
+دول محتاجين كمان `ultralytics` (اللي جوّاه YOLO) و `opencv`.
+
+⚠️ **`ultralytics` مش متثبّت على Kaggle.** الملف ده كان بيقول إنه موجود
+أصلاً، وده كان صح زمان وبقى غلط — الصورة بتاعة Kaggle اتغيّرت. أي سكريبت
+بيستخرج pose بيقع بـ `ModuleNotFoundError: No module named 'ultralytics'`
+(اتأكّد 2026-09-19). قبله بخلية:
+
+```python
+!pip install -q ultralytics
+```
+
+`opencv` موجود أصلاً. والسكريبتات اللي بتستخرج pose هي:
+`shared/pose_extract.py` · `fastdtw/build_local_templates.py` ·
+`fastdtw/build_external_templates.py` · `fastdtw/experiment_ten_actions.py`.
 
 ---
 
@@ -87,7 +110,10 @@
 |---|---|
 | `مافيش keypoints لـ vidtestN في <مسار>` | الملفات مش في المسار المطبوع. شغّل `python shared/paths.py` وقارن |
 | `الفيديوهات المتاحة (0)` | نفس الحاجة — الـ clone ناقص أو `KEYPOINTS_DIR` متظبّط غلط |
-| `ModuleNotFoundError: fastdtw_core` | مش في الفولدر الصح. لازم تكون جوّه `Test1/kaggle_nb_520b8d324a` |
+| `ModuleNotFoundError: fastdtw_core` | مش في الفولدر الصح. لازم تكون جوّه `/kaggle/working/Test1` |
+| `ModuleNotFoundError: ultralytics` | `!pip install -q ultralytics` — مش متثبّت على Kaggle |
+| `can't open file '/kaggle/working/fastdtw/...'` | الجلسة عملت ريستارت ومسحت `/kaggle/working`. أعد خلية الاستنساخ |
+| `cannot change to '/kaggle/working/Test1'` | نفس الحاجة — الريبو اتمسح |
 | `ModuleNotFoundError: paths` | سطر `import _bootstrap` اتشال أو اتنقل تحت الاستيرادات — لازم يفضل أول واحد |
 | `مش قادر أفتح <مسار>.mp4` | ده `render_*.py` بس — محتاج الداتاسِت متوصّل بالنوتبوك |
 

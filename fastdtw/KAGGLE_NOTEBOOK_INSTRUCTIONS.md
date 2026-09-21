@@ -15,13 +15,18 @@
 في أول خلية في الـ Notebook، اكتب:
 
 ```python
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
+!git log --oneline -1
 ```
 
 ثم اضغط **Run** (أو Shift+Enter)
 
-⚠️ **لازم الـ `-b`** — الفرع `crossvideo-and-gt-unification` فيه الملفات الحديثة.
+⚠️ **لازم الـ `-b`** — الفرع `hmdb51-frame-scale-experiment` فيه الملفات
+الحديثة، و `main` وراه بكتير.
+
+⚠️ **اسم الفرع بيتغيّر مع الشغل.** سطر `git log` موجود عشان تتأكد: لو آخر
+commit مش اللي انت مستنيه، غيّر اسم الفرع في السطر الأول.
 
 ---
 
@@ -92,7 +97,25 @@
 
 **السبب:** أنت في المجلد الغلط.
 
-**الحل:** تأكد من `%cd Test1/kaggle_nb_520b8d324a`
+**الحل:** تأكد من `%cd /kaggle/working/Test1`
+
+---
+
+### المشكلة: `ModuleNotFoundError: No module named 'ultralytics'`
+
+**السبب:** `ultralytics` مش متثبّت على Kaggle (اتأكّد 2026-09-19). بيلزم
+للسكريبتات اللي بتستخرج pose بس، مش للتصنيف.
+
+**الحل:** `!pip install -q ultralytics`
+
+---
+
+### المشكلة: `can't open file '/kaggle/working/fastdtw/...'`
+
+**السبب:** الجلسة عملت ريستارت و `/kaggle/working` اتمسح بالكامل — الريبو
+والكاش والمخرجات كلهم راحوا.
+
+**الحل:** أعد خلية الـ clone من الأول.
 
 ---
 
@@ -170,8 +193,8 @@ shared/
 
 ```python
 # الخلية الأولى: Clone
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
 
 # الخلية الثانية: تحقق
 !python shared/paths.py
@@ -189,7 +212,10 @@ shared/
 
 ✓ **لا تحتاج GPU** — كل الأوامر CPU بس
 
-✓ **لا تحتاج pip install** — fastdtw_core موجود في الريبو
+✓ **لا تحتاج pip install للتصنيف** — fastdtw_core موجود في الريبو
+
+⚠️ **لكن استخراج الـ pose محتاج `!pip install -q ultralytics`** — مش متثبّت
+على Kaggle
 
 ✓ **المدة المتوقعة:**
    - run_crossvideo = 6 ثواني
@@ -203,7 +229,7 @@ shared/
 ## لو بتحب تشتغل محلي (بدون Kaggle)
 
 ```bash
-cd kaggle_nb_520b8d324a
+cd Test1
 python shared/paths.py
 python fastdtw/run_crossvideo.py
 ```

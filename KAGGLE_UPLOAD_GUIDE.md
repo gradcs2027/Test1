@@ -49,12 +49,15 @@
 #### ✅ الخلية الأولى (Clone)
 
 ```python
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
-print('✓ Cloned successfully')
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
+!git log --oneline -1
 ```
 
-**الخرج:** `✓ Cloned successfully`
+**الخرج:** آخر commit على الفرع. لو مش اللي انت مستنيه، يبقى اسم الفرع في
+السطر اللي فوق بقى قديم — غيّره.
+
+⚠️ اسم الفرع بيتغيّر مع الشغل. الفرع الحالي `hmdb51-frame-scale-experiment`.
 
 ---
 
@@ -142,7 +145,8 @@ print('✓ Cloned successfully')
 !ls -la
 ```
 
-تأكد أنك في `/kaggle/working/Test1/kaggle_nb_520b8d324a`
+تأكد أنك في `/kaggle/working/Test1` — `shared/` و `fastdtw/` قاعدين في جذر
+الريبو على طول، مافيش فولدر جوّاه.
 
 ---
 
@@ -188,8 +192,8 @@ print('✓ Cloned successfully')
 
 ```python
 # 1. Clone
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
 
 # 2. تحقق
 !python shared/paths.py

@@ -9,7 +9,7 @@
 ## الفولدرات — كل طريقة لوحدها
 
 ```
-kaggle_nb_520b8d324a/
+Test1/          ← جذر الريبو نفسه، مافيش فولدر لفّة جوّاه
 ├── shared/     الكود المشترك — مسارات · ground truth · تطبيع · قياس
 ├── lstm/       ⭐ الطريقة الأساسية: BiLSTM على NTU-60
 ├── fastdtw/    خط الأساس اللي الدكتور طلبه (من غير داتاسِت)
@@ -467,8 +467,8 @@ python shared/pose_extract.py && python fastdtw/run_crossvideo.py
 **تشغيل مسار الـ few-shot على Kaggle** — نفس الأوامر بالظبط، من غير أي تعديل:
 
 ```python
-!git clone -q -b crossvideo-and-gt-unification https://github.com/gradcs2027/Test1.git
-%cd Test1/kaggle_nb_520b8d324a
+!git clone -q -b hmdb51-frame-scale-experiment https://github.com/gradcs2027/Test1.git /kaggle/working/Test1
+%cd /kaggle/working/Test1
 !python shared/paths.py            # بيطبع المسارات اللي لقاها — بصّ عليها الأول
 !python fastdtw/run_crossvideo.py  # ⭐ الرقم النضيف
 !python fastdtw/run_vidtest4.py    # التنبؤ الأعمى
@@ -484,7 +484,7 @@ python shared/pose_extract.py && python fastdtw/run_crossvideo.py
 
 | | ليه لأ |
 |---|---|
-| **`pip install`** | `fastdtw_core.py` تطبيق **محلي** مكتوب في الريبو، مش حزمة pip. مسار الـ few-shot كله معتمد على **numpy بس**، و Kaggle فيها numpy أصلاً |
+| **`pip install`** (للتصنيف بس) | `fastdtw_core.py` تطبيق **محلي** مكتوب في الريبو، مش حزمة pip. مسار الـ few-shot كله معتمد على **numpy بس**، و Kaggle فيها numpy أصلاً. ⚠️ لكن **استخراج** الـ pose محتاج `!pip install -q ultralytics` — مش متثبّت على Kaggle (اتأكّد 2026-09-19) |
 | **الداتاسِت** | التصنيف شغّال على الـ keypoints (828 KB، متسجّلة في git فبتيجي مع الـ clone)، مش على ملفات الـ mp4. الداتاسِت محتاجينه بس لـ `pose_extract.py` و `render_*.py` |
 | **الـ GPU** | كله numpy على CPU. `run_crossvideo` 6 ثواني، `run_vidtest4` 29 ثانية، `run_vidtest3` 43 ثانية |
 
