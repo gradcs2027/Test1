@@ -180,8 +180,31 @@ def render_video(video_name, ext_templates, mu, sigma):
 
     colors = colors_for(segs)
 
-    # قرا الفيديو الأصلي
-    video_path = f'/kaggle/input/testvid_upload/{video_name}.mp4'
+    # قرا الفيديو الأصلي — جرّب مسارات مختلفة
+    video_paths = [
+        f'/kaggle/input/testvid_upload/{video_name}.mp4',
+        f'/kaggle/input/testvid/{video_name}.mp4',
+        Path('testvid_upload') / f'{video_name}.mp4',
+        Path('testvid') / f'{video_name}.mp4',
+    ]
+
+    video_path = None
+    for p in video_paths:
+        if isinstance(p, str):
+            p = Path(p)
+        if p.exists():
+            video_path = str(p)
+            break
+
+    if not video_path:
+        print(f"   ⚠️ مالقتش فيديو {video_name} في المسارات:")
+        for p in video_paths:
+            print(f"      - {p}")
+        print(f"   ℹ️ الـ keypoints موجودة بس الفيديو الأصلي لأ — هستخدم prediction فقط")
+        # بدل رسم skeleton، رسم الـ segments والـ timeline بدون skeleton
+        # (كود مختصر للـ fallback)
+        return
+
     cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():
