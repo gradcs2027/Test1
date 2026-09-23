@@ -37,9 +37,9 @@ if hasattr(sys.stdout, 'reconfigure'):
 import _bootstrap  # noqa: F401
 
 from classifier import norm_distance, normalize_window, resample_linear, to_features
-from ground_truth import VIDEOS, spans
-from paths import KP_OUT, load_keypoints, out_dir
-from render_gt import EDGES, FONT, PALETTE, draw_skeleton, open_writer
+from ground_truth import GROUND_TRUTH, VIDEOS
+from paths import KP_OUT, load_keypoints, video_path
+from render_gt import FONT, PALETTE, draw_skeleton, open_writer
 
 # الإعدادات من experiment_frame_scales.py
 FRAME_CONFIGS = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
@@ -48,8 +48,9 @@ GT_LABEL_ALIASES = {
     'sitting': ['sitting', 'sit_down'],
 }
 
-OUT_DIR = Path('outputs')
-OUT_DIR.mkdir(exist_ok=True)
+import os
+OUT_DIR = Path(os.environ.get('RENDER_OUT', 'outputs'))
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 (OUT_DIR / 'raw').mkdir(exist_ok=True)
 (OUT_DIR / 'z_normalized').mkdir(exist_ok=True)
 
@@ -127,151 +128,141 @@ def segment_predictions(video, templates, mu_sigma, n_frames, use_z=True, min_du
     kp, fps = load_keypoints(video)
     duration = len(kp) / fps
 
-    step = int(fps / fps_out)
-    segments = []
-    current_label = None
-    t0 = 0
-
+    step = max(1, int(fps / fps_out))
     mu, sigma = mu_sigma if use_z else (None, None)
 
-    for frame_idx in range(0, len(kp) - n_frames, step):
+    # توقّع لكل نافذة منزلقة، منسوب لنص النافذة
+    times, preds = [], []
+    for frame_idx in range(0, len(kp) - n_frames + 1, step):
         clip = kp[frame_idx:frame_idx + n_frames]
-        if len(clip) < n_frames:
-            break
-
         seq = resample_linear(normalize_window(clip), n=n_frames)
         feat = to_features(seq, mode='vel', shape_norm=True)
+        preds.append(classify_z(feat, templates, mu, sigma) if use_z
+                     else classify_raw(feat, templates))
+        times.append((frame_idx + n_frames / 2) / fps)
 
-        if use_z:
-            pred = classify_z(feat, templates, mu, sigma)
+    if not preds:
+        return [], fps, duration
+
+    # تنعيم بالأغلبية على ~1 ثانية عشان الشريط يبقى مقروء
+    k = max(1, int(fps_out * min_duration))
+    smooth = []
+    for i in range(len(preds)):
+        win = preds[max(0, i - k):i + k + 1]
+        smooth.append(max(set(win), key=win.count))
+
+    # كل توقّع بيغطي من نص المسافة للي قبله لنص المسافة للي بعده
+    bounds = [0.0] + [(a + b) / 2 for a, b in zip(times, times[1:])] + [duration]
+    segments = []
+    for i, lab in enumerate(smooth):
+        if segments and segments[-1]['label'] == lab:
+            segments[-1]['t1'] = bounds[i + 1]
         else:
-            pred = classify_raw(feat, templates)
-
-        t = frame_idx / fps
-
-        if pred != current_label:
-            if current_label is not None and t - t0 >= min_duration:
-                segments.append({
-                    'label': current_label,
-                    't0': t0,
-                    't1': t,
-                })
-            current_label = pred
-            t0 = t
-
-    if current_label is not None and duration - t0 >= min_duration:
-        segments.append({
-            'label': current_label,
-            't0': t0,
-            't1': duration,
-        })
+            segments.append({'label': lab, 't0': bounds[i], 't1': bounds[i + 1]})
 
     return segments, fps, duration
 
 
-def colors_for(segs):
-    labs = sorted({s['label'] for s in segs})
-    return {l: PALETTE[i % len(PALETTE)] for i, l in enumerate(labs)}
+HEAD_H = 70                     # شريط التوقّع فوق
+BAR_H = 110                     # شريطين تحت: التوقّع + الـ GT
+COLOR_OTHER = (120, 120, 120)   # سكون / مستبعد في الـ GT
 
 
-def draw_timeline(frame, segs, colors, t, dur, w, h):
-    """رسم الشريط الزمني"""
-    y0 = h - 84
-    cv2.rectangle(frame, (0, y0), (w, h), (18, 18, 18), -1)
+def label_colors(ext_templates):
+    """لون ثابت لكل حركة عبر كل الـ 80 فيديو — عشان المقارنة بالعين."""
+    labs = sorted({t['label'] for t in ext_templates})
+    return {l: PALETTE[i % len(PALETTE)] if i < len(PALETTE)
+            else tuple(int(c) for c in np.random.default_rng(i).integers(60, 230, 3))
+            for i, l in enumerate(labs)}
 
-    for s in segs:
-        x1 = int(s['t0'] / dur * w)
-        x2 = int(s['t1'] / dur * w)
-        col = colors[s['label']]
-        cv2.rectangle(frame, (x1, y0 + 22), (x2, y0 + 52), col, -1)
 
-        tw = cv2.getTextSize(s['label'], FONT, 0.32, 1)[0][0]
+def _bar(frame, y, segs, colors, dur, w, title):
+    """صف واحد في الشريط الزمني. segs = [(بداية، نهاية، لابل)]."""
+    cv2.putText(frame, title, (4, y + 20), FONT, 0.38, (200, 200, 200), 1, cv2.LINE_AA)
+    x_min = 44
+    span = w - x_min
+    for s, e, l in segs:
+        x1, x2 = x_min + int(s / dur * span), x_min + int(e / dur * span)
+        col = colors.get(l, COLOR_OTHER)
+        cv2.rectangle(frame, (x1, y + 6), (x2, y + 30), col, -1)
+        cv2.rectangle(frame, (x1, y + 6), (x2, y + 30), (0, 0, 0), 1)
+        tw = cv2.getTextSize(l, FONT, 0.32, 1)[0][0]
         if x2 - x1 > tw + 6:
-            cv2.putText(frame, s['label'],
-                       (x1 + (x2 - x1 - tw) // 2, y0 + 43),
-                       FONT, 0.32, (255, 255, 255), 1, cv2.LINE_AA)
-
-    xc = int(t / dur * w)
-    cv2.line(frame, (xc, y0 + 14), (xc, y0 + 58), (255, 255, 255), 2)
+            cv2.putText(frame, l, (x1 + (x2 - x1 - tw) // 2, y + 23),
+                        FONT, 0.32, (255, 255, 255), 1, cv2.LINE_AA)
 
 
-def render_video(video_name, n_frames, templates, mu_sigma, use_z=True):
-    """رسم فيديو كامل"""
-    kp, fps = load_keypoints(video_name)
+def draw_timeline(frame, pred, gt, colors, t, dur, w, h):
+    """التوقّع فوق والـ GT تحته — نفس محور الزمن."""
+    y0 = h - BAR_H
+    cv2.rectangle(frame, (0, y0), (w, h), (18, 18, 18), -1)
+    _bar(frame, y0 + 4, [(s['t0'], s['t1'], s['label']) for s in pred],
+         colors, dur, w, 'PRED')
+    _bar(frame, y0 + 40, gt, colors, dur, w, 'GT')
+    for sec in range(0, int(dur) + 1, 5):
+        x = 44 + int(sec / dur * (w - 44))
+        cv2.putText(frame, str(sec), (max(1, x - 6), y0 + 94), FONT, 0.32,
+                    (170, 170, 170), 1, cv2.LINE_AA)
+    xc = 44 + int(t / dur * (w - 44))
+    cv2.line(frame, (xc, y0 + 4), (xc, y0 + 80), (255, 255, 255), 2)
 
-    # اقطع الـ segments
-    segs, fps_actual, dur = segment_predictions(
+
+def render_video(video_name, n_frames, templates, mu_sigma, colors, use_z=True):
+    """رسم فيديو كامل: هيدر (عدد الفريمات + التوقّع) / الفيديو + الهيكل / شريطين زمن."""
+    kp, kp_fps = load_keypoints(video_name)
+    segs, _, _ = segment_predictions(
         video_name, templates, mu_sigma, n_frames, use_z=use_z)
+    gt = [(s, e, l) for s, e, l in GROUND_TRUTH[video_name]]
 
-    colors = colors_for(segs)
-
-    # قرا الفيديو الأصلي
-    video_paths = [
-        f'/kaggle/input/testvid_upload/{video_name}.mp4',
-        f'/kaggle/input/testvid/{video_name}.mp4',
-        Path('testvid_upload') / f'{video_name}.mp4',
-        Path('testvid') / f'{video_name}.mp4',
-    ]
-
-    video_path = None
-    for p in video_paths:
-        if isinstance(p, str):
-            p = Path(p)
-        if p.exists():
-            video_path = str(p)
-            break
-
-    if not video_path:
-        print(f"   ⚠️ مالقتش {video_name}.mp4")
-        return False
-
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(str(video_path(video_name)))
     if not cap.isOpened():
-        print(f"   ❌ فشل الفتح")
+        print(f"   ⚠️ مالقتش {video_path(video_name)}")
         return False
 
+    fps = cap.get(cv2.CAP_PROP_FPS)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps_video = cap.get(cv2.CAP_PROP_FPS)
+    vh = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    dur = total / fps
+    w -= w % 2
+    vh -= vh % 2
+    h = HEAD_H + vh + BAR_H
 
-    # اعرف المسار
     folder = 'z_normalized' if use_z else 'raw'
-    out_path = OUT_DIR / folder / f'{n_frames}_{video_name}.mp4'
+    out_path = OUT_DIR / folder / f'{n_frames}fr_{video_name}.mp4'
+    _, write, close = open_writer(out_path, fps, w, h)
 
-    writer = open_writer(out_path, w, h, fps_video)
-
-    frame_count = 0
+    mode = 'Z-NORM' if use_z else 'RAW'
+    i = 0
     while True:
-        ret, frame = cap.read()
-        if not ret:
+        ok, frame = cap.read()
+        if not ok:
             break
+        t = i / fps
+        canvas = np.zeros((h, w, 3), np.uint8)
+        canvas[HEAD_H:HEAD_H + vh] = frame[:vh, :w]
 
-        t = frame_count / fps_video
+        k = min(int(t * kp_fps), len(kp) - 1)   # الـ keypoints بـ fps أقل من الفيديو
+        draw_skeleton(canvas, kp[k], HEAD_H)
 
-        # رسم الـ skeleton
-        try:
-            kp_frame = kp[frame_count]
-            frame = draw_skeleton(frame, kp_frame, EDGES, PALETTE[0])
-        except Exception:
-            pass
-
-        # رسم الشريط الزمني
-        draw_timeline(frame, segs, colors, t, dur, w, h)
-
-        # رسم الـ label الحالي
         seg = next((s for s in segs if s['t0'] <= t < s['t1']), None)
-        if seg:
-            label = seg['label']
-            mode = "Z" if use_z else "RAW"
-            cv2.rectangle(frame, (10, 10), (w - 10, 80), (50, 50, 50), -1)
-            cv2.putText(frame, f'{n_frames}FR | {mode}: {label}',
-                       (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+        label = seg['label'] if seg else '-'
+        truth = next((l for s, e, l in gt if s <= t < e), '-')
+        col = colors.get(label, COLOR_OTHER)
+        cv2.rectangle(canvas, (0, 0), (w, HEAD_H), (18, 18, 18), -1)
+        cv2.rectangle(canvas, (0, 0), (10, HEAD_H), col, -1)
+        cv2.putText(canvas, label.upper(), (22, 40), FONT, 1.0, col, 2, cv2.LINE_AA)
+        cv2.putText(canvas, f'{n_frames} frames | {mode} | GT: {truth}',
+                    (24, 62), FONT, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
+        cv2.putText(canvas, f'{t:5.1f}s', (w - 80, 40), FONT, 0.55,
+                    (230, 230, 230), 1, cv2.LINE_AA)
 
-        writer.write(frame)
-        frame_count += 1
+        draw_timeline(canvas, segs, gt, colors, t, dur, w, h)
+        write(canvas)
+        i += 1
 
     cap.release()
-    writer.release()
+    close()
     return True
 
 
@@ -281,6 +272,7 @@ def main():
     print("="*70)
 
     ext_templates = load_external_templates()
+    colors = label_colors(ext_templates)
 
     print(f"\n📚 تحضير البيانات...")
     print(f"   {len(ext_templates)} قالب من 4 داتاسِتس")
@@ -309,7 +301,7 @@ def main():
                 status = f"[{current}/{total_videos}]"
 
                 print(f"    {status} {video}...", end='', flush=True)
-                if render_video(video, n_frames, templates, mu_sigma, use_z=use_z):
+                if render_video(video, n_frames, templates, mu_sigma, colors, use_z=use_z):
                     print(f" ✅")
                 else:
                     print(f" ⚠️")
