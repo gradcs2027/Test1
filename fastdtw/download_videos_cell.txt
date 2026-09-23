@@ -1,0 +1,43 @@
+## خلية إضافية للنوتبوك: تنزيل الفيديوهات الأصلية
+
+أضف الخلية دي بعد التشغيل:
+
+```python
+# خلية جديدة — تنزيل الفيديوهات الأصلية
+!python fastdtw/download_original_videos.py
+
+# بعدها النتايج هتكون في:
+# original_videos/
+# ├─ vidtest1.mp4
+# ├─ vidtest2.mp4
+# ├─ vidtest3.mp4
+# └─ vidtest4.mp4
+```
+
+أو بدل ما تشغّل script، استخدم الكود المباشر:
+
+```python
+import shutil
+from pathlib import Path
+
+# الفيديوهات الأصلية
+source = Path('/kaggle/input/testvid_upload')
+output = Path('original_videos')
+output.mkdir(exist_ok=True)
+
+for video in ['vidtest1.mp4', 'vidtest2.mp4', 'vidtest3.mp4', 'vidtest4.mp4']:
+    src = source / video
+    if src.exists():
+        shutil.copy2(src, output / video)
+        print(f"✅ {video}")
+    else:
+        print(f"❌ {video} - مالقتش")
+
+print(f"\n✅ الفيديوهات في: {output.absolute()}")
+```
+
+---
+
+## بعد التنزيل:
+
+اضغط على **Files** → **original_videos** → Download كل فيديو
