@@ -57,7 +57,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_external_templates():
     """اقرا البنك"""
-    ext_dir = KP_OUT / 'external'
+    ext_dir = Path(os.environ.get('BANK_DIR', KP_OUT / 'external'))
     manifest = np.load(ext_dir / 'manifest.npy', allow_pickle=True)
     templates = []
     for m in manifest:
@@ -98,51 +98,33 @@ def calibrate_templates(templates):
     return mu, sigma
 
 
-def classify_z(window_feat, templates, mu, sigma):
-    """التصنيف مع Z"""
-    per_label_best = {}
-    for idx, t in enumerate(templates):
-        d = norm_distance(window_feat, t['feat'], radius=RADIUS)
-        z = (d - mu[idx]) / sigma[idx]
-        if t['label'] not in per_label_best or z < per_label_best[t['label']]:
-            per_label_best[t['label']] = z
-
-    ranked = sorted(per_label_best.items(), key=lambda kv: kv[1])
-    return ranked[0][0]
-
-
-def classify_raw(window_feat, templates):
-    """التصنيف بدون Z"""
-    per_label_best = {}
-    for t in templates:
-        d = norm_distance(window_feat, t['feat'], radius=RADIUS)
-        if t['label'] not in per_label_best or d < per_label_best[t['label']]:
-            per_label_best[t['label']] = d
-
-    ranked = sorted(per_label_best.items(), key=lambda kv: kv[1])
-    return ranked[0][0]
-
-
-def segment_predictions(video, templates, mu_sigma, n_frames, use_z=True, min_duration=0.5, fps_out=10):
-    """قسّم الفيديو لـ segments"""
+def window_distances(video, templates, n_frames, fps_out=5):
+    """
+    مسافة DTW بين كل نافذة منزلقة وكل قالب — بتتحسب **مرة واحدة**
+    وبتتستخدم للـ raw والـ Z مع بعض (الفرق بينهم بس في التطبيع بعد كده).
+    """
     kp, fps = load_keypoints(video)
-    duration = len(kp) / fps
-
-    step = max(1, int(fps / fps_out))
-    mu, sigma = mu_sigma if use_z else (None, None)
-
-    # توقّع لكل نافذة منزلقة، منسوب لنص النافذة
-    times, preds = [], []
+    step = max(1, int(round(fps / fps_out)))
+    times, rows = [], []
     for frame_idx in range(0, len(kp) - n_frames + 1, step):
         clip = kp[frame_idx:frame_idx + n_frames]
         seq = resample_linear(normalize_window(clip), n=n_frames)
         feat = to_features(seq, mode='vel', shape_norm=True)
-        preds.append(classify_z(feat, templates, mu, sigma) if use_z
-                     else classify_raw(feat, templates))
+        rows.append([norm_distance(feat, t['feat'], radius=RADIUS) for t in templates])
         times.append((frame_idx + n_frames / 2) / fps)
+    return np.array(times), np.array(rows), len(kp) / fps
 
-    if not preds:
-        return [], fps, duration
+
+def segment_predictions(times, D, labels, duration, mu_sigma=None,
+                        min_duration=0.5, fps_out=5):
+    """من مصفوفة المسافات لـ segments. mu_sigma=None يعني raw."""
+    if len(D) == 0:
+        return []
+    S = D if mu_sigma is None else (D - mu_sigma[0]) / mu_sigma[1]
+    uniq = sorted(set(labels))
+    idx = {l: [i for i, x in enumerate(labels) if x == l] for l in uniq}
+    per_label = np.stack([S[:, idx[l]].min(axis=1) for l in uniq], axis=1)
+    preds = [uniq[j] for j in per_label.argmin(axis=1)]
 
     # تنعيم بالأغلبية على ~1 ثانية عشان الشريط يبقى مقروء
     k = max(1, int(fps_out * min_duration))
@@ -160,7 +142,7 @@ def segment_predictions(video, templates, mu_sigma, n_frames, use_z=True, min_du
         else:
             segments.append({'label': lab, 't0': bounds[i], 't1': bounds[i + 1]})
 
-    return segments, fps, duration
+    return segments
 
 
 HEAD_H = 70                     # شريط التوقّع فوق
@@ -207,11 +189,9 @@ def draw_timeline(frame, pred, gt, colors, t, dur, w, h):
     cv2.line(frame, (xc, y0 + 4), (xc, y0 + 80), (255, 255, 255), 2)
 
 
-def render_video(video_name, n_frames, templates, mu_sigma, colors, use_z=True):
+def render_video(video_name, n_frames, segs, colors, use_z=True):
     """رسم فيديو كامل: هيدر (عدد الفريمات + التوقّع) / الفيديو + الهيكل / شريطين زمن."""
     kp, kp_fps = load_keypoints(video_name)
-    segs, _, _ = segment_predictions(
-        video_name, templates, mu_sigma, n_frames, use_z=use_z)
     gt = [(s, e, l) for s, e, l in GROUND_TRUTH[video_name]]
 
     cap = cv2.VideoCapture(str(video_path(video_name)))
@@ -266,45 +246,45 @@ def render_video(video_name, n_frames, templates, mu_sigma, colors, use_z=True):
     return True
 
 
+def render_job(job):
+    """شغلانة واحدة = (فيديو، عدد فريمات) → فيديوهين (raw + Z).
+    المسافات بتتحسب مرة واحدة للاتنين."""
+    video, n_frames = job
+    ext_templates = load_external_templates()
+    colors = label_colors(ext_templates)
+    templates = build_templates(ext_templates, n_frames)
+    mu_sigma = calibrate_templates(templates)
+    labels = [t['label'] for t in templates]
+
+    times, D, dur = window_distances(video, templates, n_frames)
+    out = []
+    for use_z in (False, True):
+        segs = segment_predictions(times, D, labels, dur,
+                                   mu_sigma=mu_sigma if use_z else None)
+        ok = render_video(video, n_frames, segs, colors, use_z=use_z)
+        out.append(f"{n_frames:>3}fr {video} {'Z  ' if use_z else 'RAW'} {'✅' if ok else '⚠️'}")
+    return out
+
+
 def main():
+    from multiprocessing import Pool
+
     print("="*70)
     print("🎬 رسم التوقّعات لكل أعداد الفريمات")
     print("="*70)
 
-    ext_templates = load_external_templates()
-    colors = label_colors(ext_templates)
+    jobs = [(v, n) for n in FRAME_CONFIGS for v in VIDEOS]
+    # الأتقل الأول عشان الـ workers يخلّصوا مع بعض تقريباً
+    jobs.sort(key=lambda j: -j[1])
+    workers = int(os.environ.get('WORKERS', min(len(jobs), max(1, (os.cpu_count() or 2) - 2))))
+    print(f"   {len(jobs)} شغلانة × 2 نسخة = {2 * len(jobs)} فيديو  |  {workers} عملية بالتوازي")
 
-    print(f"\n📚 تحضير البيانات...")
-    print(f"   {len(ext_templates)} قالب من 4 داتاسِتس")
-
-    total_videos = len(FRAME_CONFIGS) * len(VIDEOS) * 2  # raw + Z
-    current = 0
-
-    # شغّل كل إعداد
-    for n_frames in FRAME_CONFIGS:
-        print(f"\n{'='*70}")
-        print(f"🎬 الإعداد: {n_frames} فريم")
-        print(f"{'='*70}")
-
-        # بناء القوالب
-        templates = build_templates(ext_templates, n_frames)
-        mu, sigma = calibrate_templates(templates)
-        mu_sigma = (mu, sigma)
-
-        # رسم نسختين
-        for use_z, folder in [(False, 'raw'), (True, 'z_normalized')]:
-            mode = "Z" if use_z else "RAW"
-            print(f"\n  📊 {mode}:")
-
-            for video in VIDEOS:
-                current += 1
-                status = f"[{current}/{total_videos}]"
-
-                print(f"    {status} {video}...", end='', flush=True)
-                if render_video(video, n_frames, templates, mu_sigma, colors, use_z=use_z):
-                    print(f" ✅")
-                else:
-                    print(f" ⚠️")
+    done = 0
+    with Pool(workers) as pool:
+        for lines in pool.imap_unordered(render_job, jobs):
+            for line in lines:
+                done += 1
+                print(f"   [{done}/{2 * len(jobs)}] {line}", flush=True)
 
     print("\n" + "="*70)
     print("✅ انتهى")
