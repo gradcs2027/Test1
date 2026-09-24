@@ -707,3 +707,9 @@ python _scratch/build_kaggle_notebook.py
    من الأرقام نفسها بدل ما يكون مكتوب ثابت.
 2. جدول عدّ الخلايا في الشرح كان أرقامه قديمة (1.41× عند n=30) والقياس
    الفعلي 2.30×. شلت الجدول الثابت وسبت الخلية تطبع القياس الحقيقي.
+
+## 2026-09-24 — الـ 80 فيديو annotated + دقة عدد الفريمات (محلياً)
+- البنك الخارجي (40 قصاصة) اتبنى على Kaggle في kernel `abdallahhsamir/fastdtw-build-bank` واتنزّل.
+- `fastdtw/render_all_frame_configs.py` اتصلّح (open_writer/draw_skeleton/مزامنة الهيكل) وبقى بالتوازي؛ بيقرا `BANK_DIR` و`RENDER_OUT` و`WORKERS`. 80 فيديو في ~10 دقايق على 22 core.
+- الفيديوهات: `C:\Users\abdol\source\Kaggle\annotated_videos\{raw,z_normalized,best_70fr_Z}` + `accuracy_results.txt`.
+- أحسن نتيجة: 70 فريم + Z = 30% (12/40)؛ الخام أحسنه 50 فريم = 12.5%.
