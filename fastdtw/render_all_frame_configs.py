@@ -125,6 +125,13 @@ def segment_predictions(times, D, labels, duration, mu_sigma=None,
     idx = {l: [i for i, x in enumerate(labels) if x == l] for l in uniq}
     per_label = np.stack([S[:, idx[l]].min(axis=1) for l in uniq], axis=1)
     preds = [uniq[j] for j in per_label.argmin(axis=1)]
+    return preds_to_segments(times, preds, duration, min_duration, fps_out)
+
+
+def preds_to_segments(times, preds, duration, min_duration=0.5, fps_out=5):
+    """توقّع لكل لحظة → segments للشريط الزمني."""
+    if len(preds) == 0:
+        return []
 
     # تنعيم بالأغلبية على ~1 ثانية عشان الشريط يبقى مقروء
     k = max(1, int(fps_out * min_duration))
@@ -189,8 +196,10 @@ def draw_timeline(frame, pred, gt, colors, t, dur, w, h):
     cv2.line(frame, (xc, y0 + 4), (xc, y0 + 80), (255, 255, 255), 2)
 
 
-def render_video(video_name, n_frames, segs, colors, use_z=True):
-    """رسم فيديو كامل: هيدر (عدد الفريمات + التوقّع) / الفيديو + الهيكل / شريطين زمن."""
+def render_video(video_name, n_frames, segs, colors, use_z=True,
+                 out_path=None, tag=None):
+    """رسم فيديو كامل: هيدر (عدد الفريمات + التوقّع) / الفيديو + الهيكل / شريطين زمن.
+    out_path/tag اختياريين — الـ ensemble بيستخدمهم بدل اسم عدد الفريمات."""
     kp, kp_fps = load_keypoints(video_name)
     gt = [(s, e, l) for s, e, l in GROUND_TRUTH[video_name]]
 
@@ -208,11 +217,13 @@ def render_video(video_name, n_frames, segs, colors, use_z=True):
     vh -= vh % 2
     h = HEAD_H + vh + BAR_H
 
-    folder = 'z_normalized' if use_z else 'raw'
-    out_path = OUT_DIR / folder / f'{n_frames}fr_{video_name}.mp4'
+    if out_path is None:
+        folder = 'z_normalized' if use_z else 'raw'
+        out_path = OUT_DIR / folder / f'{n_frames}fr_{video_name}.mp4'
     _, write, close = open_writer(out_path, fps, w, h)
 
-    mode = 'Z-NORM' if use_z else 'RAW'
+    if tag is None:
+        tag = f"{n_frames} frames | {'Z-NORM' if use_z else 'RAW'}"
     i = 0
     while True:
         ok, frame = cap.read()
@@ -232,7 +243,7 @@ def render_video(video_name, n_frames, segs, colors, use_z=True):
         cv2.rectangle(canvas, (0, 0), (w, HEAD_H), (18, 18, 18), -1)
         cv2.rectangle(canvas, (0, 0), (10, HEAD_H), col, -1)
         cv2.putText(canvas, label.upper(), (22, 40), FONT, 1.0, col, 2, cv2.LINE_AA)
-        cv2.putText(canvas, f'{n_frames} frames | {mode} | GT: {truth}',
+        cv2.putText(canvas, f'{tag} | GT: {truth}',
                     (24, 62), FONT, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
         cv2.putText(canvas, f'{t:5.1f}s', (w - 80, 40), FONT, 0.55,
                     (230, 230, 230), 1, cv2.LINE_AA)

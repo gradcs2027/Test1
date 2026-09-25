@@ -713,3 +713,17 @@ python _scratch/build_kaggle_notebook.py
 - `fastdtw/render_all_frame_configs.py` اتصلّح (open_writer/draw_skeleton/مزامنة الهيكل) وبقى بالتوازي؛ بيقرا `BANK_DIR` و`RENDER_OUT` و`WORKERS`. 80 فيديو في ~10 دقايق على 22 core.
 - الفيديوهات: `C:\Users\abdol\source\Kaggle\annotated_videos\{raw,z_normalized,best_70fr_Z}` + `accuracy_results.txt`.
 - أحسن نتيجة: 70 فريم + Z = 30% (12/40)؛ الخام أحسنه 50 فريم = 12.5%.
+
+## 2026-09-25 — Ensemble weighted voting بين الـ 10 classifiers (10…100 فريم)
+- سكربت جديد: `fastdtw/experiment_ensemble.py` (بالتوازي، ~9 دقايق على 22 core). بيطلّع `fastdtw/results/ensemble_results.txt` + 4 فيديوهات في `annotated_videos/ensemble/`.
+- **الأوزان leave-one-video-out**: وإحنا بنقيس على فيديو، الأوزان جاية من الـ 3 التانيين بس (مفيش GT من فيديو الاختبار في الأوزان).
+- طرق الدمج: majority، weighted (وزن = دقة الـ classifier)، weighted×confidence، per-class، soft (متوسط Z).
+- `render_all_frame_configs.py`: اتفصلت `preds_to_segments` و`render_video` بقت بتاخد `out_path`/`tag`.
+
+| الاختبار | أحسن classifier لوحده (LOVO) | أحسن ensemble | ملاحظة |
+|---|---|---|---|
+| أ) الـ 40 قصاصة GT | **25.0%** | 22.5% (weighted×conf) | الـ ensemble **ماكسبش**. الـ 30% بتاعة 70 فريم متختارة على الاختبار نفسه |
+| ب) نافذة منزلقة (746 لحظة) | 7.5% | **11.3%** (weighted×conf) | كسب، بس الكل قريب من الصدفة (≈5.5%) |
+
+- **ليه الـ ensemble ماكسبش في (أ)**: الـ classifiers بيغلطوا في نفس القصاصات (الأخطاء مرتبطة)، فالتصويت بيعيد نفس الغلط. التصويت بيفيد لما الأخطاء تكون مستقلة.
+- **ليه (ب) واطي كده**: القوالب هي الحركة كاملة متضغوطة لـ n فريم، والنافذة المنزلقة القصيرة بتشوف جزء من الحركة بس.
