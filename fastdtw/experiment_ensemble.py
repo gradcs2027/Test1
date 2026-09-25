@@ -26,8 +26,9 @@
   soft           متوسط Z موزون لكل حركة بدل الأصوات
 
 التشغيل:
-    python experiment_ensemble.py            # أ + ب + رسم الفيديوهات
+    python experiment_ensemble.py            # أ + ب + رسم الفيديوهات (weighted_conf)
     python experiment_ensemble.py --no-render
+    python experiment_ensemble.py --cached --method weighted   # من غير DTW تاني
 متغيرات: RENDER_OUT (فولدر الفيديوهات)، WORKERS
 """
 import os
@@ -53,7 +54,8 @@ OUT_DIR = out_dir(__file__)
 STEPS_PER_SEC = 5               # نقطة تقييم كل 0.2 ثانية في الجزء ب
 PRIOR = 2                       # تنعيم أوزان per_class (عدد أصوات وهمية)
 GT_ALIAS = {'sit_down': 'sitting'}
-RENDER_METHOD = 'weighted'      # الطريقة اللي بتترسم في الفيديوهات
+RENDER_METHOD = 'weighted_conf' # الطريقة اللي بتترسم (أو --method)
+CACHE = OUT_DIR / 'ensemble_scores.npz'
 
 METHODS = [
     ('best_single', 'أحسن classifier لوحده (متختار من الفيديوهات التانية)'),
@@ -63,6 +65,9 @@ METHODS = [
     ('per_class', 'وزن لكل حركة (كل مقياس في اللي بيعرفه)'),
     ('soft', 'تصويت ناعم (متوسط Z موزون)'),
 ]
+TAGS = {'best_single': 'best single scale', 'majority': 'majority vote',
+        'weighted': 'weighted vote', 'weighted_conf': 'weighted vote x confidence',
+        'per_class': 'per-class weights', 'soft': 'soft vote (mean Z)'}
 
 
 def _label_z(D, mu, sigma, labels, uniq):
@@ -218,21 +223,9 @@ def report(title, S, y, vids, lines):
     return results
 
 
-def main():
-    render = '--no-render' not in sys.argv
-    workers = int(os.environ.get('WORKERS', max(1, (os.cpu_count() or 2) - 2)))
-    ext = E.load_external_templates()
-    uniq = sorted({t['label'] for t in ext})
-    lab_idx = {l: i for i, l in enumerate(uniq)}
-    lines = []
-
-    print('=' * 70)
-    print(f'  🗳️  Ensemble بين {len(FRAME_CONFIGS)} classifiers: '
-          + ' · '.join(map(str, FRAME_CONFIGS)))
-    print(f'  {len(ext)} قالب خارجي، {len(uniq)} حركة، {workers} عملية بالتوازي')
-    print('=' * 70)
+def compute_scores(workers, lab_idx):
+    """الحتة التقيلة (DTW) — ~9 دقايق. بترجع Z لكل (مقياس، نقطة، حركة) للجزئين."""
     t0 = time.perf_counter()
-
     with Pool(workers) as pool:
         # أ) الـ 40 قصاصة
         res = sorted(pool.map(gt_windows_job, FRAME_CONFIGS))
@@ -257,7 +250,33 @@ def main():
             y_b.append(lab_idx.get(gt, -1))
             v_b.append(v)
             t_b.append(c / fps)
-    y_b, v_b, t_b = np.array(y_b), np.array(v_b), np.array(t_b)
+    return S_a, y_a, v_a, S_b, np.array(y_b), np.array(v_b), np.array(t_b)
+
+
+def main():
+    render = '--no-render' not in sys.argv
+    method = sys.argv[sys.argv.index('--method') + 1] if '--method' in sys.argv \
+        else RENDER_METHOD
+    assert method in dict(METHODS), f'طرق متاحة: {list(dict(METHODS))}'
+    workers = int(os.environ.get('WORKERS', max(1, (os.cpu_count() or 2) - 2)))
+    ext = E.load_external_templates()
+    uniq = sorted({t['label'] for t in ext})
+    lab_idx = {l: i for i, l in enumerate(uniq)}
+    lines = []
+
+    print('=' * 70)
+    print(f'  🗳️  Ensemble بين {len(FRAME_CONFIGS)} classifiers: '
+          + ' · '.join(map(str, FRAME_CONFIGS)))
+    print(f'  {len(ext)} قالب خارجي، {len(uniq)} حركة، {workers} عملية بالتوازي')
+    print('=' * 70)
+    if '--cached' in sys.argv and CACHE.exists():
+        print(f'📦 المسافات من الكاش: {CACHE.name}')
+        c = np.load(CACHE)
+        S_a, y_a, v_a, S_b, y_b, v_b, t_b = (c[k] for k in
+                                             ('S_a', 'y_a', 'v_a', 'S_b', 'y_b', 'v_b', 't_b'))
+    else:
+        S_a, y_a, v_a, S_b, y_b, v_b, t_b = compute_scores(workers, lab_idx)
+        np.savez(CACHE, S_a=S_a, y_a=y_a, v_a=v_a, S_b=S_b, y_b=y_b, v_b=v_b, t_b=t_b)
 
     report('أ) الـ 40 قصاصة GT — نفس اختبار experiment_frame_scales', S_a, y_a, v_a, lines)
     res_b = report('ب) نافذة منزلقة على الفيديو كله (دقة لكل 0.2 ثانية)', S_b, y_b, v_b, lines)
@@ -266,7 +285,7 @@ def main():
     print(f'\n✅ الجدول اتحفظ في {OUT_DIR / "ensemble_results.txt"}')
 
     if render:
-        render_videos(res_b[RENDER_METHOD][0], v_b, t_b, uniq, ext, workers, lines)
+        render_videos(res_b[method][0], v_b, t_b, uniq, method, workers, lines)
 
 
 def _render_one(args):
@@ -279,15 +298,15 @@ def _render_one(args):
     return video, R.render_video(video, 0, segs, colors, out_path=out_path, tag=tag)
 
 
-def render_videos(pred, vids, times, uniq, ext, workers, lines):
+def render_videos(pred, vids, times, uniq, method, workers, lines):
     from pathlib import Path
     out = Path(os.environ.get('RENDER_OUT', 'outputs')) / 'ensemble'
     out.mkdir(parents=True, exist_ok=True)
-    tag = f'ENSEMBLE {FRAME_CONFIGS[0]}-{FRAME_CONFIGS[-1]}fr | weighted vote'
+    tag = f'ENSEMBLE {FRAME_CONFIGS[0]}-{FRAME_CONFIGS[-1]}fr | {TAGS[method]}'
     jobs = [(v, list(times[vids == v]),
              [uniq[p] if p >= 0 else '-' for p in pred[vids == v]],
-             out / f'ensemble_{v}.mp4', tag) for v in VIDEOS]
-    print(f'\n🎬 رسم {len(jobs)} فيديو ensemble...')
+             out / f'ensemble_{method}_{v}.mp4', tag) for v in VIDEOS]
+    print(f'\n🎬 رسم {len(jobs)} فيديو ensemble ({method})...')
     with Pool(min(workers, len(jobs))) as pool:
         for video, ok in pool.imap_unordered(_render_one, jobs):
             print(f'   {video} {"✅" if ok else "⚠️"}')
