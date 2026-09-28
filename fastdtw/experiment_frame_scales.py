@@ -21,8 +21,10 @@ HMDB51 عنده فئة عامة واحدة بس اسمها 'sit' — مفيش ت
 الاستخدام (على Kaggle، بعد ما build_external_templates.py يتشغّل):
     python experiment_frame_scales.py
 """
+import os
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -42,7 +44,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 FRAME_CONFIGS = (10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
 RADIUS = 1
-EXT_DIR = KP_OUT / 'external'
+# BANK_DIR بيبدّل البنك (مثلاً external_big من build_big_bank.py) من غير تعديل
+EXT_DIR = Path(os.environ['BANK_DIR']) if os.environ.get('BANK_DIR') else KP_OUT / 'external'
 OUT_DIR = out_dir(__file__)
 
 # حركتنا → أسامي الـ ground truth اللي بتتحسب عليها (فيه استثناء واحد:

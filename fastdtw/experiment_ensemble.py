@@ -55,7 +55,9 @@ STEPS_PER_SEC = 5               # نقطة تقييم كل 0.2 ثانية في �
 PRIOR = 2                       # تنعيم أوزان per_class (عدد أصوات وهمية)
 GT_ALIAS = {'sit_down': 'sitting'}
 RENDER_METHOD = 'weighted_conf' # الطريقة اللي بتترسم (أو --method)
-CACHE = OUT_DIR / 'ensemble_scores.npz'
+# البنك الافتراضي من غير لاحقة، وأي بنك تاني (BANK_DIR) ملفاته باسمه
+BANK_TAG = '' if E.EXT_DIR.name == 'external' else f'_{E.EXT_DIR.name}'
+CACHE = OUT_DIR / f'ensemble_scores{BANK_TAG}.npz'
 
 METHODS = [
     ('best_single', 'أحسن classifier لوحده (متختار من الفيديوهات التانية)'),
@@ -223,8 +225,26 @@ def report(title, S, y, vids, lines):
     return results
 
 
-def compute_scores(workers, lab_idx):
-    """الحتة التقيلة (DTW) — ~9 دقايق. بترجع Z لكل (مقياس، نقطة، حركة) للجزئين."""
+def print_prediction_spread(res, S, y, uniq, lines):
+    """لكل حركة: صح كام من كام، واتوقّعت كام مرة — عشان نشوف لو حركة بتبلع الباقي."""
+    def out(s=''):
+        print(s)
+        lines.append(s)
+
+    single, ens = res['best_single'][0], res['weighted_conf'][0]
+    out('\n  لكل حركة:           [أحسن classifier لوحده]   [موزون × الثقة]')
+    out(f'  {"الحركة":<16}{"العدد":>6}{"صح":>8}{"اتوقّعت":>10}{"صح":>10}{"اتوقّعت":>10}')
+    for i, l in enumerate(uniq):
+        n = int((y == i).sum())
+        if n == 0 and not (single == i).any() and not (ens == i).any():
+            continue
+        out(f'  {l:<16}{n:>6}{((single == i) & (y == i)).sum():>8}{(single == i).sum():>10}'
+            f'{((ens == i) & (y == i)).sum():>10}{(ens == i).sum():>10}')
+
+
+def compute_scores(workers, lab_idx, sliding=True):
+    """الحتة التقيلة (DTW) — ~9 دقايق مع البنك الصغير. بترجع Z لكل (مقياس، نقطة،
+    حركة) للجزئين. sliding=False = الجزء أ بس (والباقي None)."""
     t0 = time.perf_counter()
     with Pool(workers) as pool:
         # أ) الـ 40 قصاصة
@@ -233,6 +253,8 @@ def compute_scores(workers, lab_idx):
         y_a = np.array([lab_idx[l] for l in res[0][2]])
         v_a = np.array(res[0][3])
         print(f'⏳ أ) خلص في {time.perf_counter() - t0:.0f}s')
+        if not sliding:
+            return S_a, y_a, v_a, None, None, None, None
 
         # ب) نافذة منزلقة
         jobs = [(v, n) for n in sorted(FRAME_CONFIGS, reverse=True) for v in VIDEOS]
@@ -268,21 +290,31 @@ def main():
     print(f'  🗳️  Ensemble بين {len(FRAME_CONFIGS)} classifiers: '
           + ' · '.join(map(str, FRAME_CONFIGS)))
     print(f'  {len(ext)} قالب خارجي، {len(uniq)} حركة، {workers} عملية بالتوازي')
+    print(f'  البنك: {E.EXT_DIR}')
     print('=' * 70)
+    gt_only = '--gt-only' in sys.argv       # الجزء أ بس — دقايق بدل ساعة مع بنك كبير
     if '--cached' in sys.argv and CACHE.exists():
         print(f'📦 المسافات من الكاش: {CACHE.name}')
         c = np.load(CACHE)
         S_a, y_a, v_a, S_b, y_b, v_b, t_b = (c[k] for k in
                                              ('S_a', 'y_a', 'v_a', 'S_b', 'y_b', 'v_b', 't_b'))
     else:
-        S_a, y_a, v_a, S_b, y_b, v_b, t_b = compute_scores(workers, lab_idx)
-        np.savez(CACHE, S_a=S_a, y_a=y_a, v_a=v_a, S_b=S_b, y_b=y_b, v_b=v_b, t_b=t_b)
+        S_a, y_a, v_a, S_b, y_b, v_b, t_b = compute_scores(workers, lab_idx, not gt_only)
+        if not gt_only:
+            np.savez(CACHE, S_a=S_a, y_a=y_a, v_a=v_a, S_b=S_b, y_b=y_b, v_b=v_b, t_b=t_b)
 
-    report('أ) الـ 40 قصاصة GT — نفس اختبار experiment_frame_scales', S_a, y_a, v_a, lines)
-    res_b = report('ب) نافذة منزلقة على الفيديو كله (دقة لكل 0.2 ثانية)', S_b, y_b, v_b, lines)
+    res_a = report('أ) الـ 40 قصاصة GT — نفس اختبار experiment_frame_scales',
+                   S_a, y_a, v_a, lines)
+    print_prediction_spread(res_a, S_a, y_a, uniq, lines)
+    if gt_only:
+        render = False
+    else:
+        res_b = report('ب) نافذة منزلقة على الفيديو كله (دقة لكل 0.2 ثانية)',
+                       S_b, y_b, v_b, lines)
 
-    (OUT_DIR / 'ensemble_results.txt').write_text('\n'.join(lines), encoding='utf-8')
-    print(f'\n✅ الجدول اتحفظ في {OUT_DIR / "ensemble_results.txt"}')
+    results_txt = OUT_DIR / f'ensemble_results{BANK_TAG}{"_gt" if gt_only else ""}.txt'
+    results_txt.write_text('\n'.join(lines), encoding='utf-8')
+    print(f'\n✅ الجدول اتحفظ في {results_txt}')
 
     if render:
         render_videos(res_b[method][0], v_b, t_b, uniq, method, workers, lines)
@@ -302,15 +334,15 @@ def render_videos(pred, vids, times, uniq, method, workers, lines):
     from pathlib import Path
     out = Path(os.environ.get('RENDER_OUT', 'outputs')) / 'ensemble'
     out.mkdir(parents=True, exist_ok=True)
-    tag = f'ENSEMBLE {FRAME_CONFIGS[0]}-{FRAME_CONFIGS[-1]}fr | {TAGS[method]}'
+    tag = f'ENSEMBLE {FRAME_CONFIGS[0]}-{FRAME_CONFIGS[-1]}fr{BANK_TAG} | {TAGS[method]}'
     jobs = [(v, list(times[vids == v]),
              [uniq[p] if p >= 0 else '-' for p in pred[vids == v]],
-             out / f'ensemble_{method}_{v}.mp4', tag) for v in VIDEOS]
+             out / f'ensemble{BANK_TAG}_{method}_{v}.mp4', tag) for v in VIDEOS]
     print(f'\n🎬 رسم {len(jobs)} فيديو ensemble ({method})...')
     with Pool(min(workers, len(jobs))) as pool:
         for video, ok in pool.imap_unordered(_render_one, jobs):
             print(f'   {video} {"✅" if ok else "⚠️"}')
-    (out / 'ensemble_results.txt').write_text('\n'.join(lines), encoding='utf-8')
+    (out / f'ensemble_results{BANK_TAG}.txt').write_text('\n'.join(lines), encoding='utf-8')
     print(f'📁 {out.resolve()}')
 
 
