@@ -1051,7 +1051,7 @@ test = 8 أشخاص (Kinect). V001 = النص التاني من فيديو ال�
 ☐ cross validation بالأشخاص و5 seeds بدل 3
 ☐ تجربة MediaPipe على V001 ومقارنتها بـ YOLO
 ☐ قرار: نمسح Downloads/IDU001V001.zip؟ ونطبّق إصلاح اختيار الشخص على shared/pose_extract.py؟
-☐ commit و push (لسه مفيش حاجة اتعملت commit)
+☑ commit و push (2026-10-17، branch hmdb51-frame-scale-experiment، آخر commit d7870f8). ha4m_report.zip برا git لأنه 130 ميجا
 ```
 
 ### تقرير للدكتور: `Project/ha4m_report/` (2026-10-15)
@@ -1125,5 +1125,5 @@ python -I ha4m/run_mp.py merge        # → ha4m/results/run_mp.txt
 ☐ تجارب رخيصة من غير تحميل: نقط الإيد من kp33، و3D من world، ونافذة 12 لـ 16 ث، ومتوسط الـ 3 seeds
 ☐ لو عايزين أكتر: V002 لكل شخص (يضاعف داتا MediaPipe)، أو كشف الأداة اللي في الإيد من الصورة
 ☐ قرار: نمسح Downloads/IDU001V001.zip (12.3 جيجا) وHA4M_V002_ColorAligned وHA4M_MP5 (حوالي 11 جيجا)؟
-☐ commit و push (لسه مفيش حاجة اتعملت commit)
+☑ commit و push (2026-10-17، branch hmdb51-frame-scale-experiment، آخر commit d7870f8). ha4m_report.zip برا git لأنه 130 ميجا
 ```
