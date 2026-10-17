@@ -4,6 +4,7 @@ HA4M بـ MediaPipe بس (الحل 2): فيديو واحد لكل شخص، Color
     python -I ha4m/run_mp.py mp full|upper     # (أ) كل الموديلات متدرّبة ومتختبرة على MediaPipe بس
     python -I ha4m/run_mp.py kin full|upper    # (ب) متدرّب على Kinect + ضجيج MediaPipe، و(ج) نفس الموديل + fine-tune على MediaPipe
     python -I ha4m/run_mp.py dtw full|upper    # FastDTW بقوالب MediaPipe
+    python -I ha4m/run_mp.py three upper       # classifier تالت بنافذة 12 ث (X) + دمج S+L+X، لـ (أ) و(ب) و(ج)
     python -I ha4m/run_mp.py merge             # → results/run_mp.txt
 
 التقسيم: نفس results/split.json (29 شخص train، 4 val، 8 test)، فيديو واحد لكل شخص.
@@ -41,12 +42,14 @@ DEV = train_att.DEV
 SEEDS = range(3)
 KP5 = OUT.parent / 'ha4m_kp' / 'mp5'
 SHORT, LONG, CENTER = 15, 40, 15            # فريمات @5fps: 3 ث، 8 ث، والـ 3 ث اللي في نص الطويلة
+XLONG, XLONG_N, KIN_XLONG = 60, 90, 360     # 12 ث: 60 فريم MediaPipe أو 360 فريم Kinect → 90 خطوة (نفس كثافة L)
+THREE = ['X: long 12s', 'L+X', 'S+L+X']
 TR_STEP, EV_STEP = 1, 2
 TWO = ['S: short 3s', 'L: long 8s', 'S+L']
 MODELS = OLD + TWO
 KIN_MODELS = ['A: LSTM'] + TWO
 MP_DT = 0.2                                 # ثانية بين فريمين MediaPipe
-NOISE_STEP = {30: 3 / 30 / MP_DT, 60: 8 / 60 / MP_DT}     # خطوة النافذة المتطبّعة بوحدة فريم MediaPipe
+NOISE_STEP = {30: 3 / 30 / MP_DT, 60: 8 / 60 / MP_DT, 90: 12 / 90 / MP_DT}     # خطوة النافذة المتطبّعة بوحدة فريم MediaPipe
 
 
 def gt_of(act):
@@ -214,6 +217,75 @@ def two(out, tag, seed, t0, predS, predL, W, vids, mp, prefix=''):
         add(out, prefix + mname, r); log(tag, prefix + mname, seed, r, t0, f' w={w}' if mname == 'S+L' else '')
 
 
+def mix3(PS, PL, PX, ys):
+    """أحسن أوزان (S، L، X) على الـ validation: شبكة 0.1 ومجموعهم 1."""
+    grid = [(a / 10, b / 10, (10 - a - b) / 10) for a in range(11) for b in range(11 - a)]
+    acc = [np.mean(np.concatenate([(a * s + b * l + c * x).argmax(1) == y for s, l, x, y in zip(PS, PL, PX, ys)]))
+           for a, b, c in grid]
+    return grid[int(np.argmax(acc))]
+
+
+def three(out, tag, seed, t0, predS, predL, predX, W, vids, mp, prefix=''):
+    """S وL بيتطبعوا بس (للمقارنة بالتشغيلة الأولى)، والمتسجّل: X، وL+X، وS+L+X. الأوزان من الـ val بس."""
+    ev = vids['test'] + vids['val']
+    PS, PL = frame_probs(predS, W, 'S_ev', ev, mp), frame_probs(predL, W, 'L_ev', ev, mp)
+    PX = frame_probs(predX, W, 'X_ev', ev, mp)
+    va = lambda P: [P[v] for v in vids['val']]
+    ys = [mp[v]['y'] for v in vids['val']]
+    wl = train_two.best_weight(va(PL), va(PX), ys)
+    w3 = mix3(va(PS), va(PL), va(PX), ys)
+    out.setdefault(prefix + 'L+X', {}).setdefault('w_long', []).append(wl)
+    out.setdefault(prefix + 'S+L+X', {}).setdefault('w', []).append(w3)
+    for mname, P in ((TWO[0], PS), (TWO[1], PL)):
+        log(tag, prefix + mname + ' (للمقارنة)', seed, stats(P, vids['test'], mp), t0)
+    for mname, P, extra in ((THREE[0], PX, ''), (THREE[1], {k: wl * PL[k] + (1 - wl) * PX[k] for k in PL}, f' w_L={wl}'),
+                            (THREE[2], {k: w3[0] * PS[k] + w3[1] * PL[k] + w3[2] * PX[k] for k in PS}, f' w(S,L,X)={w3}')):
+        r = stats(P, vids['test'], mp)
+        add(out, prefix + mname, r); log(tag, prefix + mname, seed, r, t0, extra)
+
+
+def run_three(body, ctx):
+    """(أ) و(ب) و(ج) بـ 3 classifiers: S (3 ث)، L (8 ث)، X (12 ث). نفس seeds وتدريب run_mp / run_kin."""
+    split, mp, vids, W = ctx
+    for v, d in mp.items():
+        W[v]['X_tr'] = wins(d['kp'], d['y'], XLONG, TR_STEP, XLONG_N, CENTER)
+        W[v]['X_ev'] = wins(d['kp'], d['y'], XLONG, EV_STEP, XLONG_N, CENTER)
+    fx = mask_legs if body == 'upper' else (lambda x: x)
+    mp_aug = (lambda x: mask_legs(base_aug(x))) if body == 'upper' else base_aug
+    M = {k: pick(W, vids['train'], f'{k}_tr', fx) + pick(W, vids['val'], f'{k}_tr', fx) for k in 'SLX'}
+    raw = load_raw()
+    subj = {v: int(v[3:6]) for v in raw}
+    Wk = {'S': {v: windows(*raw[v]) for v in raw}, 'L': {v: train_two.windows_long(*raw[v]) for v in raw},
+          'X': {v: train_two.windows_long(*raw[v], win=KIN_XLONG, n=XLONG_N) for v in raw}}
+
+    def kpick(Wv, S):
+        L = [(Wv[v][0][Wv[v][2] >= 0.8], Wv[v][1][Wv[v][2] >= 0.8]) for v in raw if subj[v] in S]
+        return fx(np.concatenate([a for a, _ in L])), np.concatenate([b for _, b in L])
+    K = {k: kpick(Wk[k], split['train']) + kpick(Wk[k], split['val']) for k in 'SLX'}
+    del Wk
+    sig, rho, bias, drop = kin_noise(raw, vids, mp)
+    augs = {}
+    for k, n in (('S', 30), ('L', 60), ('X', XLONG_N)):
+        f = make_noisy_aug(sig, rho, bias, drop, step=NOISE_STEP[n])
+        augs[k] = (lambda x, f=f: mask_legs(f(x))) if body == 'upper' else f
+    print(f'three_{body}: نوافذ MediaPipe train ' + ' / '.join(f'{k} {len(M[k][1])}' for k in 'SLX')
+          + ' | Kinect train ' + ' / '.join(f'{k} {len(K[k][1])}' for k in 'SLX'), flush=True)
+    tag, out = f'three_{body}', {}
+    pr = lambda m, p: (lambda X: train_two.predict(m, p, fx(X)))
+    for seed in SEEDS:
+        t0 = time.time()
+        a = {k: train_two.train(*M[k], seed, mp_aug) for k in 'SLX'}
+        three(out, tag, seed, t0, *(pr(*a[k]) for k in 'SLX'), W, vids, mp)
+        t0 = time.time()
+        b = {k: train_two.train(*K[k], seed, augs[k]) for k in 'SLX'}
+        three(out, tag, seed, t0, *(pr(*b[k]) for k in 'SLX'), W, vids, mp, '(ب) ')
+        t0 = time.time()
+        c = {k: (finetune(b[k][0], b[k][1], *M[k], seed, mp_aug)[0], b[k][1]) for k in 'SLX'}
+        three(out, tag, seed, t0, *(pr(*c[k]) for k in 'SLX'), W, vids, mp, '(ج) ')
+    (RES / f'run_mp_three_{body}.json').write_text(json.dumps(out))
+    print('DONE', tag, flush=True)
+
+
 def kin_noise(raw, vids, mp):
     """ضجيج MediaPipe مقابل Kinect على فيديوهات الـ val، بعد ما كل واحد يتطبّع لوحده (زي مدخل الموديل)."""
     def nrm(w):
@@ -323,4 +395,4 @@ if __name__ == '__main__':
         merge()
     else:
         ctx = setup()
-        {'mp': run_mp, 'kin': run_kin, 'dtw': run_dtw}[a[0]](a[1], ctx)
+        {'mp': run_mp, 'kin': run_kin, 'dtw': run_dtw, 'three': run_three}[a[0]](a[1], ctx)

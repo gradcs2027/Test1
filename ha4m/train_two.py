@@ -33,15 +33,16 @@ def normn(w, n):
     return w[np.linspace(0, len(w) - 1, n).astype(int)].reshape(n, 34).astype(np.float32)
 
 
-def windows_long(x, y, step=STEP):
-    starts = np.arange(0, len(x) - LONG_WIN + 1, step)
-    X = np.stack([normn(x[s:s + LONG_WIN], LONG_N) for s in starts])
-    c0 = (LONG_WIN - WIN) // 2
+def windows_long(x, y, step=STEP, win=LONG_WIN, n=LONG_N):
+    """win، n: طول النافذة بالفريم وعدد الخطوات (الافتراضي 8 ث → 60؛ run_mp بيستخدم كمان 12 ث = 360 → 90)."""
+    starts = np.arange(0, len(x) - win + 1, step)
+    X = np.stack([normn(x[s:s + win], n) for s in starts])
+    c0 = (win - WIN) // 2
     lab, pur = [], []
     for s in starts:
         c = np.bincount(y[s + c0:s + c0 + WIN], minlength=13)
         lab.append(c.argmax()); pur.append(c.max() / WIN)
-    return X, np.array(lab), np.array(pur), starts + LONG_WIN // 2
+    return X, np.array(lab), np.array(pur), starts + win // 2
 
 
 def feats(X):

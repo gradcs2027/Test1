@@ -2,16 +2,25 @@ HA4M بـ MediaPipe بس: test = 8 أشخاص، فيديو لكل شخص، 5 ف�
 (أ) = متدرّب على MediaPipe بس | (ب) = Kinect + ضجيج MediaPipe | (ج) = (ب) + fine-tune على MediaPipe
 
 الموديل             الجسم      الدقة  macro-F1   الدقة لكل seed
+(ج) L+X             upper       80.5      75.2   80.3, 79.4, 81.9
+(ج) S+L+X           upper       80.0      76.2   79.3, 79.5, 81.1
 (ج) S+L             upper       78.8      76.1   77.6, 79.2, 79.6
+(ج) X: long 12s     upper       78.4      68.6   78.3, 78.9, 78.0
 (ج) S+L             full        78.3      73.6   79.8, 77.8, 77.3
 (ج) L: long 8s      full        77.8      72.4   79.2, 77.6, 76.4
 (ج) L: long 8s      upper       77.6      73.5   77.2, 78.2, 77.5
+(ب) S+L+X           upper       77.5      71.4   77.9, 77.7, 77.0
+S+L+X               upper       76.5      70.9   73.9, 76.5, 79.1
+(ب) L+X             upper       76.3      69.3   76.4, 77.7, 74.8
+L+X                 upper       75.5      69.6   74.0, 74.4, 78.2
+(ب) X: long 12s     upper       75.1      65.1   76.2, 77.2, 72.1
 (ب) S+L             full        74.9      70.0   74.5, 75.2, 74.9
 (ب) L: long 8s      full        74.3      68.2   74.2, 75.2, 73.5
 S+L                 upper       74.0      69.6   71.4, 73.6, 77.0
 (ب) S+L             upper       73.9      68.3   72.9, 75.1, 73.8
 (ب) L: long 8s      upper       73.3      66.8   71.8, 75.1, 73.0
 L: long 8s          upper       73.1      67.4   70.9, 72.9, 75.5
+X: long 12s         upper       72.6      63.1   72.9, 71.0, 73.8
 (ج) A: LSTM         upper       71.2      69.4   70.2, 73.2, 70.4
 (ج) S: short 3s     upper       70.6      67.5   72.0, 67.4, 72.4
 (ج) A: LSTM         full        70.4      67.0   69.9, 71.0, 70.4
@@ -41,7 +50,7 @@ lstm                upper       58.4      42.7   57.6, 57.2, 60.5
 fastdtw             upper       32.8      27.5   35.1, 32.5, 30.7
 fastdtw             full        30.9      25.1   33.9, 30.1, 28.6
 
-أحسن موديل: (ج) S+L (upper)
-recall لكل فئة: carrier 74 | gear bearings 89 | planet gears 91 | carrier shaft 83 | sun shaft 90 | sun gear 81 | sun gear bearing 88 | ring gear 83 | block2→block1 91 | cover 68 | screws 67 | allen key 73 | none 23
-أكتر لخبطة (حقيقي←متوقع، فريمات على 3 seeds): screws←allen key 415 | allen key←screws 384 | block2→block1←ring gear 164 | cover←screws 163 | carrier←gear bearings 119 | none←carrier 116
-الدقة لكل شخص: 001 81.0 | 006 85.2 | 012 83.9 | 017 71.7 | 022 78.5 | 024 85.7 | 027 65.1 | 030 64.7
+أحسن موديل: (ج) L+X (upper)
+recall لكل فئة: carrier 69 | gear bearings 91 | planet gears 92 | carrier shaft 81 | sun shaft 87 | sun gear 81 | sun gear bearing 84 | ring gear 86 | block2→block1 92 | cover 76 | screws 70 | allen key 80 | none 5
+أكتر لخبطة (حقيقي←متوقع، فريمات على 3 seeds): screws←allen key 378 | allen key←screws 246 | none←allen key 185 | block2→block1←ring gear 160 | carrier←gear bearings 145 | allen key←block2→block1 116
+الدقة لكل شخص: 001 80.0 | 006 86.0 | 012 86.1 | 017 75.1 | 022 79.4 | 024 87.4 | 027 64.6 | 030 72.1
