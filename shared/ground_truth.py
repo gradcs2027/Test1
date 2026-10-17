@@ -42,6 +42,10 @@ from vidtest3_ground_truth_v2 import (REPEATED as REPEATED3,
                                       ground_truth_vidtest3, video_info as INFO3)
 from vidtest4_ground_truth import (REPEATED as REPEATED4,
                                    ground_truth_vidtest4, video_info as INFO4)
+from vidtest5_ground_truth import (REPEATED as REPEATED5,
+                                   ground_truth_vidtest5, video_info as INFO5)
+from vidtest6_ground_truth import (REPEATED as REPEATED6,
+                                   ground_truth_vidtest6, video_info as INFO6)
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -54,12 +58,20 @@ GROUND_TRUTH = {
     'vidtest2': ground_truth_vidtest2,
     'vidtest3': ground_truth_vidtest3,
     'vidtest4': ground_truth_vidtest4,
+    'vidtest5': ground_truth_vidtest5,
+    'vidtest6': ground_truth_vidtest6,
 }
 
-VIDEO_INFO = {'vidtest1': INFO1, 'vidtest2': INFO2, 'vidtest3': INFO3, 'vidtest4': INFO4}
-REPEATED = {'vidtest1': REPEATED1, 'vidtest2': REPEATED2, 'vidtest3': REPEATED3, 'vidtest4': REPEATED4}
+VIDEO_INFO = {'vidtest1': INFO1, 'vidtest2': INFO2, 'vidtest3': INFO3, 'vidtest4': INFO4,
+              'vidtest5': INFO5, 'vidtest6': INFO6}
+REPEATED = {'vidtest1': REPEATED1, 'vidtest2': REPEATED2, 'vidtest3': REPEATED3, 'vidtest4': REPEATED4,
+            'vidtest5': REPEATED5, 'vidtest6': REPEATED6}
 
-VIDEOS = list(GROUND_TRUTH)
+# فيديوهات التطوير: كل التجارب القديمة (البنوك، LOVO، الـ 40 قصاصة) ماشية عليها.
+# ⚠️ ماتزوّدش عليها — أكتر من 15 سكريبت بيلفّوا على VIDEOS، والأرقام القديمة هتتغيّر.
+VIDEOS = ['vidtest1', 'vidtest2', 'vidtest3', 'vidtest4']
+# اختبار مخبّي: مادخلش في أي تدريب ولا ضبط ولا بنك (2026-09-30).
+HELDOUT = ['vidtest5', 'vidtest6']
 
 
 # ==============================================================================
@@ -208,6 +220,9 @@ def main():
     print('=' * 66)
 
     for v in VIDEOS:
+        print_video(v)
+    print(f'\n  — اختبار مخبّي (مش في VIDEOS): {", ".join(HELDOUT)} —')
+    for v in HELDOUT:
         print_video(v)
 
     print(f'\n{"=" * 66}')

@@ -1,0 +1,41 @@
+🔒 اختبار مخبّي: vidtest5, vidtest6 — 13 قصاصة (walking 2, clapping 5, phone_call 3, wave 1, ironing 1, touch_head 1)
+   من الـ 18: 12 قصاصة = 3 متشافة (phone_call) + 9 مش متشافة. قصاصة واحدة = 8.3%
+
+  الطريقة (18 حركة)                       الكل   متشافة  مش متشافة   صح     أكتر حركة اتقالت
+  صدفة (1 من 18)                          5.6%     5.6%       5.6%
+  دايماً «stand_up» (أكتر حركة في التطوير)    0.0%     0.0%       0.0%   0/12   stand_up ×12
+  دايماً «clapping» (أكتر حركة هنا — غش)   41.7%     0.0%      55.6%   5/12   clapping ×12
+
+  — FastDTW بنك كبير 171 (عنده قوالب للـ 18، أوزان من الـ 40 قصاصة) —
+  FastDTW · أحسن مقياس                   33.3%    33.3%      33.3%   4/12   play_pingpong ×4
+  FastDTW · موزون×ثقة                    33.3%    33.3%      33.3%   4/12   clapping ×3
+  FastDTW · وزن لكل حركة                 33.3%    33.3%      33.3%   4/12   clapping ×4
+
+  — Zero shot (BiLSTM + MiniLM) —
+  من غير تصحيح (18 وصف)                  50.0%    33.3%      55.6%   6/12   brush_hair ×4
+  بتصحيح gamma=0.320 من NTU              50.0%     0.0%      66.7%   6/12   clapping ×4
+  zsl: المش متشافة من 13 وصف بس              —        —      66.7%   6/9   clapping ×4
+     (صدفة الـ 13 = 7.7%)
+
+  — بالوصف الجديد (19 وصف، 13 قصاصة) —
+  الكل 46.2% (6/13) | ironing: 0/1
+  ironing 49-56s: ترتيب الوصف الصح 8 من 19 (cosine 0.04، الأعلى wave 0.19)
+
+  الفيديو     الفترة  الحقيقة     zero shot (أعلى 3، cosine)                        FastDTW موزون×ثقة
+  vidtest5    0-8     walking     ✓walking 0.15  running 0.13  play_pingpong 0.07   ✗ phone_call
+  vidtest5   24-30    clapping    ✓clapping 0.21  brush_hair 0.21  phone_call 0.17  ✓ clapping
+  vidtest5   36-52    phone_call  brush_hair 0.32  ✓phone_call 0.28  spray_perfume 0.26✓ phone_call
+  vidtest5   72-77    clapping    phone_call 0.17  ✓clapping 0.13  wave 0.10        ✗ stand_up
+  vidtest6    4-7     walking     ✓walking 0.18  wave 0.16  ironing 0.15            ✗ play_pingpong
+  vidtest6   11-19    clapping    ironing 0.10  hugging 0.05  turn_on_light 0.03    ✓ clapping
+  vidtest6   24-29    wave        brush_hair 0.34  touch_head 0.25  spray_perfume 0.22✗ spray_perfume
+  vidtest6   44-48    phone_call  ✓phone_call 0.37  drink_water 0.25  wave 0.15     ✗ play_pingpong
+  vidtest6   49-56    ironing     wave 0.19  walking 0.15  running 0.11             —
+  vidtest6   60-72    phone_call  brush_hair 0.34  drink_water 0.30  ✓phone_call 0.25✗ stand_up
+  vidtest6   80-89    clapping    ✓clapping 0.23  phone_call 0.10  wave 0.07        ✓ clapping
+  vidtest6  123-130   touch_head  brush_hair 0.33  hugging 0.20  wave 0.19          ✗ spray_perfume
+  vidtest6  155-161   clapping    ✓clapping 0.14  phone_call 0.06  brush_hair 0.06  ✗ play_pingpong
+
+  — النوافذ المنزلقة (3s كل 0.5s، من blind_*.npz) — نص النافذة جوّه فترة متعلّمة —
+  vidtest5: 66 نافذة | 19 وصف 37.9% | 18 وصف (من غير ironing) 39.4% | صدفة 5.6%
+  vidtest6: 120 نافذة | 19 وصف 35.8% | 18 وصف (من غير ironing) 40.6% | صدفة 5.6%
