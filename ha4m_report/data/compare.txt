@@ -1,0 +1,30 @@
+HA4M | segments 3684 | أشخاص train 29 / val 4 / test 8 | عينات train 2597 / val 356 / test 731
+صدفة 8.3% | أكبر فئة (test) 17.6%
+
+A  COCO17 2D         دقة test  79.6% (78.0, 80.4, 80.4)  macro-F1  79.3%  (98s)
+D  Kinect32 2D       دقة test  79.0% (79.1, 76.3, 81.5)  macro-F1  77.6%  (78s)
+C  COCO17 3D         دقة test  70.1% (74.8, 72.0, 63.5)  macro-F1  67.3%  (66s)
+B  Kinect32 2D+3D    دقة test  81.7% (81.8, 83.7, 79.5)  macro-F1  80.7%  (81s)
+
+دقة كل فعل (recall %، متوسط 3 seeds):
+الفعل                        A       D       C       B
+1 carrier                   78      82      78      75
+2 gear bearings             73      75      71      74
+3 planet gears              81      82      78      91
+4 carrier shaft             88      78      52      87
+5 sun shaft                 78      82      50      77
+6 sun gear                  62      57      36      67
+7 sun gear bearing          60      58      43      61
+8 ring gear                 88      64      52      73
+9 block2→block1             85      90      81      83
+10 cover                    89      88      82      83
+11 screws                   87      89      90      95
+12 allen key                91      95      91      99
+
+أكتر لخبطة في A  COCO17 2D (الحقيقي ← المتوقع، عدد): 2 gear beari←3 planet gea 63 | 3 planet gea←2 gear beari 62 | 7 sun gear b←6 sun gear 41 | 6 sun gear←5 sun shaft 27 | 5 sun shaft←4 carrier sh 19
+
+أكتر لخبطة في D  Kinect32 2D (الحقيقي ← المتوقع، عدد): 3 planet gea←2 gear beari 59 | 2 gear beari←3 planet gea 55 | 7 sun gear b←6 sun gear 49 | 8 ring gear←7 sun gear b 31 | 6 sun gear←5 sun shaft 24
+
+أكتر لخبطة في C  COCO17 3D (الحقيقي ← المتوقع، عدد): 2 gear beari←3 planet gea 75 | 3 planet gea←2 gear beari 53 | 6 sun gear←5 sun shaft 41 | 8 ring gear←7 sun gear b 35 | 7 sun gear b←6 sun gear 33
+
+أكتر لخبطة في B  Kinect32 2D+3D (الحقيقي ← المتوقع، عدد): 2 gear beari←3 planet gea 78 | 7 sun gear b←6 sun gear 39 | 3 planet gea←2 gear beari 30 | 5 sun shaft←4 carrier sh 21 | 1 carrier←2 gear beari 21

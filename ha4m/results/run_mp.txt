@@ -1,0 +1,47 @@
+HA4M بـ MediaPipe بس: test = 8 أشخاص، فيديو لكل شخص، 5 فريم/ث، دقة لكل فريم (متوسط 3 seeds)
+(أ) = متدرّب على MediaPipe بس | (ب) = Kinect + ضجيج MediaPipe | (ج) = (ب) + fine-tune على MediaPipe
+
+الموديل             الجسم      الدقة  macro-F1   الدقة لكل seed
+(ج) S+L             upper       78.8      76.1   77.6, 79.2, 79.6
+(ج) S+L             full        78.3      73.6   79.8, 77.8, 77.3
+(ج) L: long 8s      full        77.8      72.4   79.2, 77.6, 76.4
+(ج) L: long 8s      upper       77.6      73.5   77.2, 78.2, 77.5
+(ب) S+L             full        74.9      70.0   74.5, 75.2, 74.9
+(ب) L: long 8s      full        74.3      68.2   74.2, 75.2, 73.5
+S+L                 upper       74.0      69.6   71.4, 73.6, 77.0
+(ب) S+L             upper       73.9      68.3   72.9, 75.1, 73.8
+(ب) L: long 8s      upper       73.3      66.8   71.8, 75.1, 73.0
+L: long 8s          upper       73.1      67.4   70.9, 72.9, 75.5
+(ج) A: LSTM         upper       71.2      69.4   70.2, 73.2, 70.4
+(ج) S: short 3s     upper       70.6      67.5   72.0, 67.4, 72.4
+(ج) A: LSTM         full        70.4      67.0   69.9, 71.0, 70.4
+L: long 8s          full        69.3      62.8   71.9, 65.9, 70.0
+(ج) S: short 3s     full        69.0      66.9   67.8, 67.5, 71.9
+S+L                 full        68.9      62.9   66.2, 69.3, 71.2
+(ب) S: short 3s     upper       67.5      63.2   68.6, 65.8, 68.2
+B: temporal att     upper       67.2      60.9   68.0, 66.1, 67.4
+C: spatial att      upper       66.7      61.7   65.0, 64.9, 70.2
+A: LSTM             upper       66.4      61.2   64.1, 67.5, 67.6
+(ب) A: LSTM         upper       65.9      61.0   67.7, 65.2, 64.8
+D: both             upper       65.6      59.4   64.9, 66.9, 64.8
+S: short 3s         upper       65.4      60.3   63.4, 64.7, 68.1
+(ب) S: short 3s     full        63.9      58.6   63.5, 62.9, 65.4
+(ب) A: LSTM         full        63.7      58.0   63.9, 64.2, 62.9
+C: spatial att      full        62.6      55.9   64.8, 61.8, 61.1
+B: temporal att     full        62.4      55.4   61.6, 61.0, 64.5
+A: LSTM             full        62.1      56.3   60.8, 61.6, 63.8
+S: short 3s         full        60.7      54.8   60.3, 60.2, 61.5
+lstm                full        60.2      46.1   60.0, 62.2, 58.4
+text                upper       59.8      45.6   58.1, 59.8, 61.5
+text                full        59.3      44.7   57.0, 60.5, 60.3
+D: both             full        58.8      51.2   55.5, 61.5, 59.5
+attn                full        58.5      43.3   60.4, 58.2, 57.0
+attn                upper       58.5      41.2   58.0, 59.5, 58.0
+lstm                upper       58.4      42.7   57.6, 57.2, 60.5
+fastdtw             upper       32.8      27.5   35.1, 32.5, 30.7
+fastdtw             full        30.9      25.1   33.9, 30.1, 28.6
+
+أحسن موديل: (ج) S+L (upper)
+recall لكل فئة: carrier 74 | gear bearings 89 | planet gears 91 | carrier shaft 83 | sun shaft 90 | sun gear 81 | sun gear bearing 88 | ring gear 83 | block2→block1 91 | cover 68 | screws 67 | allen key 73 | none 23
+أكتر لخبطة (حقيقي←متوقع، فريمات على 3 seeds): screws←allen key 415 | allen key←screws 384 | block2→block1←ring gear 164 | cover←screws 163 | carrier←gear bearings 119 | none←carrier 116
+الدقة لكل شخص: 001 81.0 | 006 85.2 | 012 83.9 | 017 71.7 | 022 78.5 | 024 85.7 | 027 65.1 | 030 64.7

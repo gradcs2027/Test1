@@ -1,0 +1,21 @@
+الموديل           عدد الباراميترات       test فريم (smooth5)  macro-F1   نوافذ
+A: LSTM                     35,149     75.7%  (77.7, 74.5, 74.9)    70.9%    73.2%
+B: temporal att             37,262     74.3%  (75.0, 75.9, 72.1)    69.3%    71.3%
+C: spatial att              35,246     76.0%  (75.7, 76.8, 75.7)    71.3%    73.9%
+D: both                     37,359     75.6%  (74.7, 77.4, 74.8)    70.8%    73.1%
+
+recall لكل فئة % (test):
+الفئة                    A       B       C       D
+carrier                 64      67      66      67
+gear bearings           83      83      85      83
+planet gears            89      89      87      90
+carrier shaft           62      59      63      61
+sun shaft               78      64      80      73
+sun gear                66      61      67      65
+sun gear bearing        71      71      74      77
+ring gear               76      82      78      81
+block2→block1           92      88      90      89
+cover                   72      72      68      74
+screws                  69      77      77      77
+allen key               66      59      64      60
+none                    31      29      31      30

@@ -1,0 +1,15 @@
+HA4M متصل | أشخاص train 29 / val 4 / test 8 (الشخص 1 + 7) | نوافذ train 21036 / val 2370
+فئات train: carrie=425 gear b=1150 planet=1275 carrie=962 sun sh=577 sun ge=419 sun ge=373 ring g=1024 block2=6049 cover=1502 screws=3360 allen =3746 none=174
+
+دقة لكل فريم (test): 71.0% (70.9, 70.9, 71.2)
+  + smoothing 5 نوافذ: 73.3% (73.7, 72.8, 73.3)
+  فريمات فيها فعل بس (من غير none): 73.2% (73.1, 73.4, 73.3)
+دقة النوافذ: 72.4% (72.3, 72.4, 72.5)
+نسبة فريمات none في الـ test: 3.7% | أكبر فئة: 24.1%
+
+recall لكل فئة (فريمات): carrier 49 | gear beari 74 | planet gea 87 | carrier sh 49 | sun shaft 70 | sun gear 62 | sun gear b 51 | ring gear 75 | block2→blo 89 | cover 59 | screws 78 | allen key 65 | none 13
+أكتر لخبطة (حقيقي←متوقع): allen key←screws 21075 | screws←allen key 9503 | gear bearings←planet gears 8957 | cover←screws 7410 | carrier←gear bearings 6320 | none←allen key 5439
+
+V001: نفس الفريمات، Kinect مقابل YOLO (الموديل اتدرّب على Kinect بس)
+  Kinect  كل الفريمات 75.1% | فريمات الأفعال 77.2%
+  YOLO    كل الفريمات 31.1% | فريمات الأفعال 32.3%

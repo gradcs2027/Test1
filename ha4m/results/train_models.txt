@@ -1,0 +1,25 @@
+HA4M | 217 فيديو، 41 شخص | train 29 شخص / val 4 / test 8 | فريمات train 424749 / val 49136 / test 165683 | نوافذ train 21036 / val 2370
+
+الموديل      test فريم (smooth5)  macro-F1   نوافذ
+lstm        73.3%  (73.7, 72.8, 73.3)    65.8%    72.4%
+attn        71.7%  (73.0, 72.3, 69.7)    64.0%    71.4%
+text        71.3%  (72.4, 72.5, 68.8)    62.0%    71.4%
+
+recall لكل فئة % (test، متوسط 3 seeds مجمّع):
+الفئة                 lstm    attn    text
+carrier                 49      46      44
+gear bearings           75      78      78
+planet gears            89      86      84
+carrier shaft           51      65      57
+sun shaft               78      59      76
+sun gear                68      54      34
+sun gear bearing        57      51      44
+ring gear               79      78      74
+block2→block1           90      92      92
+cover                   63      59      64
+screws                  79      78      80
+allen key               67      61      63
+none                     9      14       6
+لخبطة lstm (حقيقي←متوقع): allen key←screws 20380 | screws←allen key 9212 | gear bearings←planet gears 8975 | cover←screws 7117
+لخبطة attn (حقيقي←متوقع): allen key←screws 23243 | screws←allen key 8939 | cover←screws 7589 | gear bearings←planet gears 7132
+لخبطة text (حقيقي←متوقع): allen key←screws 23847 | screws←allen key 8633 | none←allen key 8160 | carrier←gear bearings 7825
